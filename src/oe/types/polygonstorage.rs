@@ -125,9 +125,39 @@ impl DynamicPolygonStorage{
                 index_buffer.insert(polygon, id as u32);
             }
         }
-        self.data.vertex_buffer_ = Vec::with_capacity(3*vertex_buffer.len());
-        self.data.index_buffer_ = Vec::with_capacity(3*index_buffer.len());
-        //TODO
+        self.data.num_of_uvs = self.uvmaps.len() as u8;
+        let vbo_offset = 6+self.uvmaps.len()*2;
+        self.data.vertex_buffer_ = vec![0.0; vbo_offset*vertex_buffer.len()];
+        self.data.vertex_buffer_.shrink_to_fit();
+
+        //gen vertex buffer
+        for (id, vertex) in vertex_buffer.iter().enumerate() {
+            let final_id = id*vbo_offset;
+            let init_pos = vertex[0] as usize;
+            let init_nor = vertex[1] as usize;
+            self.data.vertex_buffer_[final_id..final_id+3].copy_from_slice(&self.positions[init_pos..init_pos+3]);
+            self.data.vertex_buffer_[final_id+3..final_id+6].copy_from_slice(&self.normals[init_nor..init_nor+3]);
+        
+            for (uv_id, uvmap) in self.uvmaps.iter().enumerate(){
+                self.data.vertex_buffer_[final_id+6+uv_id*2] = uvmap.elements[vertex[2+uv_id] as usize*2];
+                self.data.vertex_buffer_[final_id+6+uv_id*2+1] = uvmap.elements[vertex[2+uv_id] as usize*2+1];
+            }
+        }
+        //gen index buffer
+        for (id, vgroup) in self.data.vgroups.iter().enumerate(){
+            self.data.index_buffers_.insert(id, vec![0;3*index_buffer.len()]);
+            self.data.index_buffers_.get_mut(&id).unwrap().shrink_to_fit();
+            let ibo_offset = 2+self.data.num_of_uvs as usize;
+            for (tri_id, tri) in vgroup.polygons.iter().enumerate(){
+                let final_id = *tri as usize * 3;
+                let triangle1 = PolygonVertexKey::new(&self.indices[final_id..final_id+ibo_offset]);
+                let triangle2 = PolygonVertexKey::new(&self.indices[final_id+ibo_offset..final_id+2*ibo_offset]);
+                let triangle3 = PolygonVertexKey::new(&self.indices[final_id+2*ibo_offset..final_id+3*ibo_offset]);
+                self.data.index_buffers_.get_mut(&id).unwrap()[tri_id*3] = index_buffer[&triangle1];
+                self.data.index_buffers_.get_mut(&id).unwrap()[tri_id*3+1] = index_buffer[&triangle2];
+                self.data.index_buffers_.get_mut(&id).unwrap()[tri_id*3+2] = index_buffer[&triangle3];
+            }
+        }
     }
 }
 

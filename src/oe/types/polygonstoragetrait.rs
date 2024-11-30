@@ -14,20 +14,20 @@ pub enum PolygonStorageType {
 
 #[derive(Default, Clone, Debug)]
 pub struct UVMapData{
-    elements : Vec<f32>
+    pub elements : Vec<f32>
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct VertexGroup{
-    polygons : Vec<u32>,
-    material : (usize, Arc<Mutex<Material>>)
+    pub polygons : Vec<u32>,
+    pub material : (usize, Arc<Mutex<Material>>)
 }
 
 #[derive(Default, Clone, Debug)]
 pub struct PolygonStorageData{
     id_ : usize,
     pub vertex_buffer_ : Vec<f32>,
-    pub index_buffer_ : Vec<u32>,
+    pub index_buffers_ : IntMap<usize, Vec<u32>>,
     pub num_of_uvs : u8,
     pub vgroups : Vec<VertexGroup>,
 }
@@ -65,17 +65,17 @@ pub trait PolygonStorageTrait : Send {
     fn get_vertex_buffer(&self) -> &Vec<f32>{
         &self.get_data().unwrap().vertex_buffer_
     }
-    fn get_index_buffer(&self) -> &Vec<u32>{
-        &self.get_data().unwrap().index_buffer_
+    fn get_index_buffer(&self, id : &usize) -> &Vec<u32>{
+        &self.get_data().unwrap().index_buffers_[id]
     }
 
     fn len(&self) -> usize{
         let total_length = self.get_vertex_buffer().len();
         total_length / (6+self.get_num_uvs() as usize*2)
     }
-    fn get_16bit_index_buffer(&self) -> Option<Vec<u16>>{
+    fn get_16bit_index_buffer(&self, id : &usize) -> Option<Vec<u16>>{
         if self.len() < 65536 {
-            let ibo = self.get_index_buffer();
+            let ibo = self.get_index_buffer(id);
             Some(ibo.iter().map(|x: &u32|->u16 {*x as u16}).collect())
         }
         else {
@@ -118,15 +118,16 @@ pub trait PolygonStorageTrait : Send {
         Some(output)
     }
     fn get_vgroup_index_buffer(&self, id : usize) -> Vec<u32>{
-        let vgroup = &self.get_vgroups()[id];
-        let ibo = self.get_index_buffer();
-        let mut output = Vec::with_capacity(vgroup.polygons.len()*3);
+        //let vgroup = &self.get_vgroups()[id];
+        let ibo = self.get_index_buffer(&id);
+        /*let mut output = Vec::with_capacity(vgroup.polygons.len()*3);
         for index in &vgroup.polygons{
             let actual_id = *index as usize *3;
             output.push(ibo[actual_id]);
             output.push(ibo[actual_id+1]);
             output.push(ibo[actual_id+2]);
         }
-        output
+        output*/
+        ibo.clone()
     }
 }
