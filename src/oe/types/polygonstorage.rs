@@ -2,18 +2,12 @@
 
 //use std::collections::HashSet;
 use super::polygonstoragetrait::*;
-use nohash_hasher::IntMap;
-use ordered_map;
+use nohash_hasher::{IntMap, IntSet};
 //use std::ops::Index;
 
 // STATIC MAP DERIVED FROM DYNAMIC
 #[derive(Default, Clone, Debug)]
 pub struct StaticPolygonStorage{
-    //pub positions : Vec<f32>,
-    //pub normals : Vec<f32>,
-    //pub uvmaps : Vec<UVMapData>,
-
-    //pub pure_indices : Vec<u32>
     data : PolygonStorageData,
     max_index : usize,
 }
@@ -41,7 +35,79 @@ impl PolygonStorageTrait for StaticPolygonStorage {
     }
 }
 
-// DYNAMIC MAP (suitable for soft bodies and new triangles on the fly)
+// SOFT BODY MAP (suitable for soft bodies)
+// Vertices' positions/normals/uvs can dynamically change
+// but no new triangles on the fly or changing existing ones
+#[derive(Default, Clone, Debug)]
+pub struct SoftbodyPolygonStorage{
+    pub positions : Vec<f32>,
+    pub normals : Vec<f32>,
+    pub uvmaps : Vec<UVMapData>,
+
+    //base for regenerating vertex buffer
+    vertex_buffer_ : Vec<Box<[u32]>>,
+
+    data : PolygonStorageData,
+    max_index : usize,
+    regenerated_data : bool
+}
+
+impl SoftbodyPolygonStorage{
+    fn new(dynamic_data : DynamicPolygonStorage) -> SoftbodyPolygonStorage{
+        let mut vertex_buffer : Vec<PolygonVertexKey> =Vec::with_capacity(dynamic_data.indices.len()/(2+dynamic_data.uvmaps.len())/2);
+        let mut index_buffer : IntSet<PolygonVertexKey> = Default::default();
+
+        index_buffer.reserve(dynamic_data.indices.len()/(2+dynamic_data.uvmaps.len())/2);
+        for original_data in (&dynamic_data.indices.data).chunks(2+dynamic_data.uvmaps.len()){
+            
+            let polygon = PolygonVertexKey::new(original_data);
+            if !index_buffer.contains(&polygon){
+                vertex_buffer.push(polygon);
+                index_buffer.insert(polygon);
+            }
+        }
+        SoftbodyPolygonStorage{
+            data : dynamic_data.get_data().unwrap().clone(),
+            vertex_buffer_ : vertex_buffer.iter().map(|x| x.to_owned()).collect(),
+            max_index : dynamic_data.get_max_index(),
+            positions : dynamic_data.positions,
+            normals : dynamic_data.normals,
+            uvmaps: dynamic_data.uvmaps,
+            regenerated_data : true,
+        }
+    }
+}
+
+impl PolygonStorageTrait for SoftbodyPolygonStorage {
+    fn get_data(&self) -> Option<&PolygonStorageData> {
+        Some(&self.data)
+    }
+    fn get_type(&self) -> PolygonStorageType{
+        PolygonStorageType::SoftBody
+    }
+    
+    // only useful for dynamic meshes
+    fn regenerate_data(&mut self) {
+        let vbo_offset = 6+self.uvmaps.len()*2;
+        self.data.vertex_buffer_ = Vec::with_capacity(vbo_offset*self.vertex_buffer_.len());
+
+        //gen vertex buffer
+        for vertex in self.vertex_buffer_.iter() {
+            let init_pos = vertex[0] as usize*3;
+            let init_nor = vertex[1] as usize*3;
+            self.data.vertex_buffer_.extend_from_slice(&self.positions[init_pos..init_pos+3]);
+            self.data.vertex_buffer_.extend_from_slice(&self.normals[init_nor..init_nor+3]);
+        
+            for (uv_id, uvmap) in self.uvmaps.iter().enumerate(){
+                self.data.vertex_buffer_.push(uvmap.elements[vertex[2+uv_id] as usize*2]);
+                self.data.vertex_buffer_.push(uvmap.elements[vertex[2+uv_id] as usize*2+1]);
+            }
+        }
+    }
+}
+
+// DYNAMIC MAP (suitable for new mesh generation and new/altered triangles on the fly)
+// Also suitable for soft bodies but slow in comparison to SOFTBODY MAP
 #[derive(Default, Clone, Debug)]
 pub struct DynamicPolygonStorage{
     pub positions : Vec<f32>,
@@ -93,6 +159,7 @@ impl PolygonStorageTrait for DynamicPolygonStorage{
     fn regenerate_data(&mut self){
         use std::time;
         let mut before = time::Instant::now();
+        
         let mut vertex_buffer : Vec<PolygonVertexKey> =Vec::with_capacity(self.indices.len()/(2+self.uvmaps.len())/2);
         let mut index_buffer : IntMap<PolygonVertexKey, u32> = Default::default();
 
@@ -117,7 +184,6 @@ impl PolygonStorageTrait for DynamicPolygonStorage{
 
         //gen vertex buffer
         for vertex in vertex_buffer.iter() {
-            //let final_id = id*vbo_offset;
             let init_pos = vertex[0] as usize*3;
             let init_nor = vertex[1] as usize*3;
             self.data.vertex_buffer_.extend_from_slice(&self.positions[init_pos..init_pos+3]);
@@ -136,17 +202,13 @@ impl PolygonStorageTrait for DynamicPolygonStorage{
         //gen index buffer
         for (id, vgroup) in self.data.vgroups.iter().enumerate(){
             self.data.index_buffers_.insert(id, Vec::with_capacity(vgroup.polygons.len()*3));
-            self.data.index_buffers_.get_mut(&id).unwrap().shrink_to_fit();
-            //println!("{:?}", index_buffer);
-            //println!("{:?}", vertex_buffer);
+
             for tri in vgroup.polygons.iter(){
                 let final_id = *tri as usize;
                 let triangle1 = PolygonVertexKey::new(&self.indices[(final_id, 0)]);
                 let triangle2 = PolygonVertexKey::new(&self.indices[(final_id, 1)]);
                 let triangle3 = PolygonVertexKey::new(&self.indices[(final_id, 2)]);
-                //println!("{:?}", triangle1);
-                //println!("{:?}", triangle2);
-                //println!("{:?}", triangle3);
+
                 self.data.index_buffers_.get_mut(&id).unwrap().push(index_buffer[&triangle1]);
                 self.data.index_buffers_.get_mut(&id).unwrap().push(index_buffer[&triangle2]);
                 self.data.index_buffers_.get_mut(&id).unwrap().push(index_buffer[&triangle3]);
@@ -160,7 +222,8 @@ impl PolygonStorageTrait for DynamicPolygonStorage{
 
 #[cfg(test)]
 pub mod polygonstoragetest{
-    use super::{DynamicPolygonStorage, UVMapData};
+
+    use super::{DynamicPolygonStorage, SoftbodyPolygonStorage, UVMapData};
     use super::super::polygonstoragetrait::*;
 
     #[test]
@@ -211,6 +274,11 @@ pub mod polygonstoragetest{
         assert!(*dynamic_polygons.get_vertex_buffer() == vbo_out);
         assert!(*dynamic_polygons.get_index_buffer(0) == ibo1_out);
         assert!(*dynamic_polygons.get_index_buffer(1) == ibo2_out);
+
+        let mut softbody_polygons = SoftbodyPolygonStorage::new(dynamic_polygons);
+        softbody_polygons.regenerate_data();
+        println!("{:?}", softbody_polygons.get_vertex_buffer());
+        assert!(*softbody_polygons.get_vertex_buffer() == vbo_out);
     }
 }
 
@@ -230,8 +298,13 @@ pub fn test_dynamic_polygon_storage_large(triangles_num : usize){
     let before = time::Instant::now();
     let dynamic_polygons = DynamicPolygonStorage::new(positions, normals, uvmaps, indices, vgroups);
     let after = time::Instant::now();
+    println!("DynamicPolygonTest {:?} triangles. Elapsed time {:?} seconds", triangles_num, (after-before).as_secs_f64());
     //println!("{:?}", dynamic_polygons.get_vertex_buffer());
     //println!("{:?}", dynamic_polygons.get_index_buffer(0));
     //println!("{:?}", dynamic_polygons.get_index_buffer(1));
-    println!("DynamicPolygonTest {:?} triangles. Elapsed time {:?} seconds", triangles_num, (after-before).as_secs_f64());
+    let mut softbody_polygons = SoftbodyPolygonStorage::new(dynamic_polygons);
+    let before = time::Instant::now();
+    softbody_polygons.regenerate_data();
+    let after = time::Instant::now();
+    println!("SoftBodyPolygonTest {:?} triangles. Elapsed time {:?} seconds", triangles_num, (after-before).as_secs_f64());
 }

@@ -9,4 +9,4 @@ pub mod polygonstorage;
 mod polygonstoragetrait;
 pub mod basecontainer;
 
-use global_variables::*;
+//use global_variables::*;

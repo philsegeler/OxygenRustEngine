@@ -10,7 +10,8 @@ use std::ops::Index;
 pub enum PolygonStorageType {
     Dynamic,
     #[default]
-    Static
+    Static,
+    SoftBody,
 }
 
 // HELPER STRUCTS
@@ -36,6 +37,9 @@ impl<'a> PolygonVertexKey<'a>{
         PolygonVertexKey{
             data
         }
+    }
+    pub fn to_owned(&self) -> Box<[u32]>{
+        self.data.to_owned().into_boxed_slice()
     }
 }
 impl<'a> Index<usize> for PolygonVertexKey<'a> {
