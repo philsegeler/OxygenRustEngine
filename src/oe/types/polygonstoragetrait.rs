@@ -1,8 +1,9 @@
-use std::sync::{Arc, Mutex};
+//use std::sync::{Arc, Mutex};
 use std::sync::atomic::{Ordering, AtomicUsize};
 use nohash_hasher::IntMap;
+use std::ops::Index;
 
-use super::material::*;
+//use super::material::*;
 
 #[repr(C)]
 #[derive(Default, Clone, Copy, Debug)]
@@ -12,6 +13,7 @@ pub enum PolygonStorageType {
     Static
 }
 
+// HELPER STRUCTS
 #[derive(Default, Clone, Debug)]
 pub struct UVMapData{
     pub elements : Vec<f32>
@@ -20,9 +22,78 @@ pub struct UVMapData{
 #[derive(Clone, Debug, Default)]
 pub struct VertexGroup{
     pub polygons : Vec<u32>,
-    pub material : (usize, Arc<Mutex<Material>>)
+    //pub material : (usize, Arc<Mutex<Material>>)
 }
 
+// polygon vertex key
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PolygonVertexKey<'a>{
+    data : &'a[u32]
+}
+
+impl<'a> PolygonVertexKey<'a>{
+    pub fn new(data : &'a[u32]) -> PolygonVertexKey{
+        PolygonVertexKey{
+            data
+        }
+    }
+}
+impl<'a> Index<usize> for PolygonVertexKey<'a> {
+    type Output = u32;
+    fn index(&self, id : usize) -> &Self::Output {
+        &self.data[id]
+    }
+}
+
+impl<'a> std::hash::Hash for PolygonVertexKey<'a> {
+    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
+        let mut output = [0;8];
+        for i in 0..self.data.len(){
+            let mut temp= (self.data[i] as u64).to_le_bytes();
+            if i % 4 >= 2{
+                temp = (self.data[i] as u64).to_be_bytes();
+            }
+            if i % 2 != 0{
+                temp = ((self.data[i] as u64) << 32).to_le_bytes();
+            } 
+            for j in 0..8{
+                output[j] |= temp[j];
+            }
+        }
+        hasher.write_u64(u64::from_le_bytes(output));
+    }
+}
+
+impl<'a> nohash_hasher::IsEnabled for PolygonVertexKey<'a> {}
+
+#[derive(Clone, Default, Debug)]
+pub struct TriangleIndices {
+    pub data : Vec<u32>,
+    num_of_uvs : usize,
+}
+
+impl TriangleIndices{
+    pub fn new(data : Vec<u32>, num_of_uvs : usize) -> TriangleIndices{
+        TriangleIndices{
+            data,
+            num_of_uvs: num_of_uvs as usize,
+        }
+    }
+    pub fn len(&self) -> usize{
+        self.data.len()
+    }
+}
+
+impl Index<(usize, usize)> for TriangleIndices {
+    type Output = [u32];
+    fn index(&self, ids : (usize, usize)) -> &Self::Output {
+        let offset = 2+self.num_of_uvs;
+        let final_id = (ids.0*3 + ids.1)*offset;
+        &self.data[final_id..(final_id + offset)]
+    }
+} 
+
+// TRAIT BASE STRUCT
 #[derive(Default, Clone, Debug)]
 pub struct PolygonStorageData{
     id_ : usize,
@@ -32,10 +103,11 @@ pub struct PolygonStorageData{
     pub vgroups : Vec<VertexGroup>,
 }
 impl PolygonStorageData{
-    pub fn new() -> PolygonStorageData{
+    pub fn new(vgroups : Vec<VertexGroup>) -> PolygonStorageData{
         static ID_COUNT : AtomicUsize = AtomicUsize::new(1);
         let mut output : PolygonStorageData = Default::default();
         output.id_ = ID_COUNT.fetch_add(1, Ordering::Relaxed);
+        output.vgroups = vgroups;
         output
     }
 }
@@ -44,12 +116,7 @@ pub trait PolygonStorageTrait : Send {
     // functions to implement
     fn get_data(&self) -> Option<&PolygonStorageData>;
     fn get_type(&self) -> PolygonStorageType;
-
-    fn gen_index_buffer(&mut self);
-    fn gen_vertex_buffer(&mut self);
-
-    fn clear_index_buffer(&mut self);
-    fn clear_vertex_buffer(&mut self);
+    fn regenerate_data(&mut self);
 
     // derived functions
 
@@ -65,15 +132,15 @@ pub trait PolygonStorageTrait : Send {
     fn get_vertex_buffer(&self) -> &Vec<f32>{
         &self.get_data().unwrap().vertex_buffer_
     }
-    fn get_index_buffer(&self, id : &usize) -> &Vec<u32>{
-        &self.get_data().unwrap().index_buffers_[id]
+    fn get_index_buffer(&self, id : usize) -> &Vec<u32>{
+        &self.get_data().unwrap().index_buffers_[&id]
     }
 
     fn len(&self) -> usize{
         let total_length = self.get_vertex_buffer().len();
         total_length / (6+self.get_num_uvs() as usize*2)
     }
-    fn get_16bit_index_buffer(&self, id : &usize) -> Option<Vec<u16>>{
+    fn get_16bit_index_buffer(&self, id : usize) -> Option<Vec<u16>>{
         if self.len() < 65536 {
             let ibo = self.get_index_buffer(id);
             Some(ibo.iter().map(|x: &u32|->u16 {*x as u16}).collect())
@@ -119,7 +186,7 @@ pub trait PolygonStorageTrait : Send {
     }
     fn get_vgroup_index_buffer(&self, id : usize) -> Vec<u32>{
         //let vgroup = &self.get_vgroups()[id];
-        let ibo = self.get_index_buffer(&id);
+        let ibo = self.get_index_buffer(id);
         /*let mut output = Vec::with_capacity(vgroup.polygons.len()*3);
         for index in &vgroup.polygons{
             let actual_id = *index as usize *3;
