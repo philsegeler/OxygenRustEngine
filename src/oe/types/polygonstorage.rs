@@ -3,6 +3,7 @@
 //use std::collections::HashSet;
 use super::polygonstoragetrait::*;
 use nohash_hasher::IntMap;
+use ordered_map;
 //use std::ops::Index;
 
 // STATIC MAP DERIVED FROM DYNAMIC
@@ -90,16 +91,25 @@ impl PolygonStorageTrait for DynamicPolygonStorage{
     
     // only useful for dynamic meshes
     fn regenerate_data(&mut self){
+        use std::time;
+        let mut before = time::Instant::now();
         let mut vertex_buffer : Vec<PolygonVertexKey> =Vec::with_capacity(self.indices.len()/(2+self.uvmaps.len())/2);
         let mut index_buffer : IntMap<PolygonVertexKey, u32> = Default::default();
+
+        index_buffer.reserve(self.indices.len()/(2+self.uvmaps.len())/2);
         for original_data in (&self.indices.data).chunks(2+self.uvmaps.len()){
             
             let polygon = PolygonVertexKey::new(original_data);
             if !index_buffer.contains_key(&polygon){
-                vertex_buffer.push(polygon.clone());
+                vertex_buffer.push(polygon);
                 index_buffer.insert(polygon, index_buffer.len() as u32);
             }
         }
+        let mut after = time::Instant::now();
+        println!("Generate preliminaries {:?}", (after-before).as_secs_f64());
+
+
+        before = time::Instant::now();
         self.data.num_of_uvs = self.uvmaps.len() as u8;
         let vbo_offset = 6+self.uvmaps.len()*2;
         self.data.vertex_buffer_ = Vec::with_capacity(vbo_offset*vertex_buffer.len());
@@ -118,6 +128,11 @@ impl PolygonStorageTrait for DynamicPolygonStorage{
                 self.data.vertex_buffer_.push(uvmap.elements[vertex[2+uv_id] as usize*2+1]);
             }
         }
+
+        after = time::Instant::now();
+        println!("gen vertex buffer {:?}", (after-before).as_secs_f64());
+        
+        before = time::Instant::now();
         //gen index buffer
         for (id, vgroup) in self.data.vgroups.iter().enumerate(){
             self.data.index_buffers_.insert(id, Vec::with_capacity(vgroup.polygons.len()*3));
@@ -137,12 +152,14 @@ impl PolygonStorageTrait for DynamicPolygonStorage{
                 self.data.index_buffers_.get_mut(&id).unwrap().push(index_buffer[&triangle3]);
             }
         }
+        after = time::Instant::now();
+        println!("gen index buffer {:?}", (after-before).as_secs_f64());
         self.regenerated_data = true;
     }
 }
 
 #[cfg(test)]
-mod polygonstoragetest{
+pub mod polygonstoragetest{
     use super::{DynamicPolygonStorage, UVMapData};
     use super::super::polygonstoragetrait::*;
 
@@ -195,29 +212,26 @@ mod polygonstoragetest{
         assert!(*dynamic_polygons.get_index_buffer(0) == ibo1_out);
         assert!(*dynamic_polygons.get_index_buffer(1) == ibo2_out);
     }
-    #[test]
-    fn test_dynamic_polygon_storage_large(){
-        extern crate rand;
-        use std::time;
-        let triangles_num = 10000;
+}
 
-        let positions: Vec<f32> = (0..triangles_num*3).map(|_| rand::random::<f32>()*2.0-1.0).collect();
-        let normals: Vec<f32> = (0..triangles_num*3).map(|_| rand::random::<f32>()*2.0-1.0).collect();
-        let uvs1: Vec<f32> = (0..triangles_num*2).map(|_| rand::random::<f32>()).collect();
-        let uvs2: Vec<f32> = (0..triangles_num*2).map(|_| rand::random::<f32>()).collect();
-        
-        let uvmaps = vec![UVMapData{elements : uvs1}, UVMapData{elements : uvs2}];
-        let indices: Vec<u32> = (0..triangles_num*6).map(|_| rand::random::<u32>()%(triangles_num as u32)).collect();
-        let total_vgroups : Vec<u32> = (0..triangles_num*2).map(|_|rand::random::<u32>()%(triangles_num as u32/4)).collect();
-        let vgroups = vec![VertexGroup{polygons : total_vgroups[0..triangles_num].to_owned()}, VertexGroup{polygons:total_vgroups[triangles_num..].to_owned()}];
-        
-        let before = time::Instant::now();
-        let dynamic_polygons = DynamicPolygonStorage::new(positions, normals, uvmaps, indices, vgroups);
-        let after = time::Instant::now();
-        //println!("{:?}", dynamic_polygons.get_vertex_buffer());
-        //println!("{:?}", dynamic_polygons.get_index_buffer(0));
-        //println!("{:?}", dynamic_polygons.get_index_buffer(1));
-        println!("Elapsed time {:?} seconds", (after-before).as_secs_f64());
-        assert!(false);
-    }
+pub fn test_dynamic_polygon_storage_large(triangles_num : usize){
+    use std::time;
+
+    let positions: Vec<f32> = (0..triangles_num*3).map(|_| rand::random::<f32>()*2.0-1.0).collect();
+    let normals: Vec<f32> = (0..triangles_num*3).map(|_| rand::random::<f32>()*2.0-1.0).collect();
+    let uvs1: Vec<f32> = (0..triangles_num*2).map(|_| rand::random::<f32>()).collect();
+    let uvs2: Vec<f32> = (0..triangles_num*2).map(|_| rand::random::<f32>()).collect();
+    
+    let uvmaps = vec![UVMapData{elements : uvs1}, UVMapData{elements : uvs2}];
+    let indices: Vec<u32> = (0..triangles_num*6).map(|_| rand::random::<u32>()%(triangles_num as u32)).collect();
+    let total_vgroups : Vec<u32> = (0..triangles_num*2).map(|_|rand::random::<u32>()%(triangles_num as u32/4)).collect();
+    let vgroups = vec![VertexGroup{polygons : total_vgroups[0..triangles_num].to_owned()}, VertexGroup{polygons:total_vgroups[triangles_num..].to_owned()}];
+    
+    let before = time::Instant::now();
+    let dynamic_polygons = DynamicPolygonStorage::new(positions, normals, uvmaps, indices, vgroups);
+    let after = time::Instant::now();
+    //println!("{:?}", dynamic_polygons.get_vertex_buffer());
+    //println!("{:?}", dynamic_polygons.get_index_buffer(0));
+    //println!("{:?}", dynamic_polygons.get_index_buffer(1));
+    println!("DynamicPolygonTest {:?} triangles. Elapsed time {:?} seconds", triangles_num, (after-before).as_secs_f64());
 }

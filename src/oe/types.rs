@@ -5,7 +5,7 @@ mod scene;
 mod mesh;
 mod viewport;
 mod material;
-mod polygonstorage;
+pub mod polygonstorage;
 mod polygonstoragetrait;
 pub mod basecontainer;
 

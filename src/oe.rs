@@ -8,7 +8,7 @@ mod global_variables;
 mod task_container;
 mod event;
 mod task;
-mod types;
+pub mod types;
 pub mod math;
 
 use dummy_structs::*;
