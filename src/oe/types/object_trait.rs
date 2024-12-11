@@ -26,9 +26,10 @@ pub struct CommonObjectData{
 }
 
 impl CommonObjectData {
-    pub fn new() -> CommonObjectData{
+    pub fn new(type_ : ObjectType) -> CommonObjectData{
         static ID_COUNT : AtomicUsize = AtomicUsize::new(1);
         let mut objdata : CommonObjectData = Default::default();
+        objdata.type_ = type_;
         objdata.id_ = ID_COUNT.fetch_add(1, Ordering::Relaxed);
         objdata
     }
@@ -61,6 +62,10 @@ pub trait ObjectTrait : Send {
     fn get_pos(&self) -> oe_math::DVec3 {
         let data = self.get_data();
         oe_math::DVec3::new(&data.pos)
+    }
+    fn set_pos(&mut self, pos : oe_math::DVec3) {
+        let data = self.get_data_mut();
+        data.pos = [pos[0], pos[1], pos[2]];
     }
     fn get_rot(&self) -> oe_math::DQuat {
         let data = self.get_data();
