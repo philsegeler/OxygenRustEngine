@@ -3,11 +3,11 @@ use super::object_trait::*;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
 pub enum LightType {
-    Mesh,
-    Light,
-    Camera,
+    Point,
+    Sun,
+    Lamp,
     #[default]
-    Custom
+    CustomLight
 }
 
 #[derive(Clone, Copy, Debug, Default)]

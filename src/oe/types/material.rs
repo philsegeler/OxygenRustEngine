@@ -2,7 +2,14 @@ use std::sync::atomic::{Ordering, AtomicUsize};
 
 #[derive(Default, Debug)]
 pub struct Material {
-    id_ : usize
+    id_ : usize,
+    dif_ : [f32; 4],
+    scol : [f32; 3],
+    alpha : f32,
+    translucency : f32,
+    illuminosity : f32,
+    specular_intensity : f32,
+    specular_hardness : f32,
 }
 
 impl Material{

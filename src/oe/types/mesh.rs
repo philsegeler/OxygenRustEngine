@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use super::object_trait::*;
-use super::polygonstorage::StaticPolygonStorage;
+use super::polygonstorage::DynamicPolygonStorage;
 use super::polygonstoragetrait::*;
 
 pub struct Mesh {
@@ -13,7 +13,7 @@ impl Mesh {
     pub fn new() -> Mesh{
         Mesh{
             data_ : CommonObjectData::new(ObjectType::Mesh),
-            polygon_storage_ : (0, Arc::new(Mutex::new(Box::new(StaticPolygonStorage::default()))))
+            polygon_storage_ : (0, Arc::new(Mutex::new(Box::new(DynamicPolygonStorage::default()))))
         }
     }
 }
