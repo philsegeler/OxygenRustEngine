@@ -1,13 +1,7 @@
-use logos::Logos;
+use logos::{Logos, Lexer};
 use std::convert::Infallible;
 use std::ffi::CString;
 use std::fmt;
-
-// generic Token trait
-pub trait TokenTrait : Clone {
-  fn get_content(&self) -> Option<TokenContent>;
-}
-
 
 #[derive(Debug, PartialEq, Clone, Default)]
 pub enum LexingError {
@@ -34,13 +28,19 @@ impl From<Infallible> for LexingError {
   }
 }
 
+fn newline_callback<'a>(lex: &mut Lexer<'a, Token<'a>>) -> usize{
+    lex.extras += 1;
+    lex.extras
+}
+
 #[derive(Logos, Debug, PartialEq, Clone, Default)]
 #[logos(error = LexingError)]
-#[logos(skip r"[ \t\n\f]+")]
+#[logos(extras = usize)]
+#[logos(skip r"[ \t\f]+")]
 pub enum Token<'a>{
 
-    #[regex(r#"[_a-zA-Z\u0080-\uFFFF][_a-zA-Z0-9\u0080-\uFFFF]*"#, |lex| lex.slice())]
-    IdentifierDef(&'a str),
+    #[regex(r#"[_a-zA-Z\u0080-\uFFFF][_a-zA-Z0-9\u0080-\uFFFF]*"#, |lex| Some(Box::new(lex.slice())))]
+    IdentifierDef(Option<Box<&'a str>>),
 
     #[regex("-?[0-9]+", callback = |lex| lex.slice().parse())]
     IntegerDef(i64),
@@ -50,12 +50,15 @@ pub enum Token<'a>{
 
     #[regex(r#""([^"\\]|\\["\\bnfrt]|u[a-fA-F0-9]{4})*""#, |lex| {let temp = lex.slice();
                                                                     if temp.len() > 2{
-                                                                     &lex.slice()[1..temp.len()-1]
+                                                                     Some(Box::new(&lex.slice()[1..temp.len()-1]))
                                                                     }
                                                                     else{
-                                                                     lex.slice()
+                                                                     Some(Box::new(lex.slice()))
                                                                     }})]
-    StringDef(&'a str),
+    StringDef(Option<Box<&'a str>>),
+
+    #[token("\n", newline_callback)]
+    NewLineDef(usize),
 
     #[token("<")]
     LTDef,
@@ -90,7 +93,10 @@ pub enum Token<'a>{
 pub enum TokenContent{
     Int(i64),
     Float(f64),
-    SomeStr(CString),
+    SomeStr(Box<CString>),
+    IntList(Box<Vec<i64>>),
+    FloatList(Box<Vec<f64>>),
+    StringList(Box<Vec<CString>>),
 }
 
 impl fmt::Display for TokenContent {
@@ -101,11 +107,11 @@ impl fmt::Display for TokenContent {
     }
 }
 
-impl<'a> TokenTrait for Token<'a> {
-  fn get_content(&self) -> Option<TokenContent>{
+impl<'a> Token<'a> {
+  pub fn get_content(&self) -> Option<TokenContent>{
     match self {
-      Token::IdentifierDef(s) => Some(TokenContent::SomeStr(CString::new(*s).ok()?)),
-      Token::StringDef(s) => Some(TokenContent::SomeStr(CString::new(*s).ok()?)),
+      Token::IdentifierDef(s) => Some(TokenContent::SomeStr(Box::new(CString::new(**(s.as_ref().unwrap())).ok()?))),
+      Token::StringDef(s) => Some(TokenContent::SomeStr(Box::new(CString::new(**(s.as_ref().unwrap())).ok()?))),
       Token::IntegerDef(s) => Some(TokenContent::Int(*s)),
       Token::FloatDef(s) => Some(TokenContent::Float(*s)),
       _ => None
@@ -129,6 +135,24 @@ impl TokenContent {
   pub fn get_float(&self) -> Option<f64>{
     match self {
       TokenContent::Float(s) => Some(*s),
+      _ => None
+    }
+  }
+  pub fn get_str_list(&self) -> Option<&Vec<CString>>{
+    match self {
+      TokenContent::StringList(s) => Some(&*s),
+      _ => None
+    }
+  }
+  pub fn get_int_list(&self) -> Option<&Vec<i64>>{
+    match self {
+      TokenContent::IntList(s) => Some(&*s),
+      _ => None
+    }
+  }
+  pub fn get_float_list(&self) -> Option<&Vec<f64>>{
+    match self {
+      TokenContent::FloatList(s) => Some(&*s),
       _ => None
     }
   }
