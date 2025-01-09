@@ -1,6 +1,7 @@
 use logos::{Logos, Lexer};
 use std::convert::Infallible;
 use std::ffi::CString;
+use compact_str::CompactString;
 use std::fmt;
 
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -39,23 +40,23 @@ fn newline_callback<'a>(lex: &mut Lexer<'a, Token<'a>>) -> usize{
 #[logos(skip r"[ \t\f]+")]
 pub enum Token<'a>{
 
-    #[regex(r#"[_a-zA-Z\u0080-\uFFFF][_a-zA-Z0-9\u0080-\uFFFF]*"#, |lex| Some(Box::new(lex.slice())))]
-    IdentifierDef(Option<Box<&'a str>>),
+    #[regex(r#"[_a-zA-Z\u0080-\uFFFF][_a-zA-Z0-9\u0080-\uFFFF]*"#, |lex| Some(lex.slice()))]
+    IdentifierDef(Option<&'a str>),
 
     #[regex("-?[0-9]+", callback = |lex| lex.slice().parse())]
-    IntegerDef(i64),
+    IntegerDef(i32),
 
     #[regex("-?[0-9]+\\.[0-9]+", |lex| lex.slice().parse())]
     FloatDef(f64),
 
     #[regex(r#""([^"\\]|\\["\\bnfrt]|u[a-fA-F0-9]{4})*""#, |lex| {let temp = lex.slice();
                                                                     if temp.len() > 2{
-                                                                     Some(Box::new(&lex.slice()[1..temp.len()-1]))
+                                                                     Some(&lex.slice()[1..temp.len()-1])
                                                                     }
                                                                     else{
-                                                                     Some(Box::new(lex.slice()))
+                                                                     Some(lex.slice())
                                                                     }})]
-    StringDef(Option<Box<&'a str>>),
+    StringDef(Option<&'a str>),
 
     #[token("\n", newline_callback)]
     NewLineDef(usize),
@@ -91,12 +92,12 @@ pub enum Token<'a>{
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenContent{
-    Int(i64),
+    Int(i32),
     Float(f64),
-    SomeStr(Box<CString>),
-    IntList(Box<Vec<i64>>),
+    SomeStr(Box<CompactString>),
+    IntList(Box<Vec<i32>>),
     FloatList(Box<Vec<f64>>),
-    StringList(Box<Vec<CString>>),
+    StringList(Box<Vec<CompactString>>),
 }
 
 impl fmt::Display for TokenContent {
@@ -108,10 +109,13 @@ impl fmt::Display for TokenContent {
 }
 
 impl<'a> Token<'a> {
+  //NOTE: leaks the content
   pub fn get_content(&self) -> Option<TokenContent>{
     match self {
-      Token::IdentifierDef(s) => Some(TokenContent::SomeStr(Box::new(CString::new(**(s.as_ref().unwrap())).ok()?))),
-      Token::StringDef(s) => Some(TokenContent::SomeStr(Box::new(CString::new(**(s.as_ref().unwrap())).ok()?))),
+      //Token::IdentifierDef(s) => Some(TokenContent::SomeStr(Box::new(CString::new(*(s.as_ref().unwrap())).ok()?))),//Some(TokenContent::SomeStr(Box::new(CompactString::new(Box::<&str>::leak(s.clone()?))))),
+      //Token::StringDef(s) =>Some(TokenContent::SomeStr(Box::new(CString::new(*(s.as_ref().unwrap())).ok()?))),//Some(TokenContent::SomeStr(Box::new(CompactString::new(Box::<&str>::leak(s.clone()?))))),
+      Token::IdentifierDef(s) => Some(TokenContent::SomeStr(Box::new(CompactString::new(s.unwrap())))),
+      Token::StringDef(s) =>Some(TokenContent::SomeStr(Box::new(CompactString::new(s.unwrap())))),//
       Token::IntegerDef(s) => Some(TokenContent::Int(*s)),
       Token::FloatDef(s) => Some(TokenContent::Float(*s)),
       _ => None
@@ -122,11 +126,12 @@ impl<'a> Token<'a> {
 impl TokenContent {
   pub fn get_str(&self) -> Option<&str>{
     match self {
-      TokenContent::SomeStr(s) => Some(s.to_str().unwrap()),
+      TokenContent::SomeStr(s) => Some(&s),//Some(s.to_str().unwrap()),
+      //TokenContent::SomeStr(s) => Some(s.to_str().unwrap()),
       _ => None
     }
   }
-  pub fn get_int(&self) -> Option<i64>{
+  pub fn get_int(&self) -> Option<i32>{
     match self {
       TokenContent::Int(s) => Some(*s),
       _ => None
@@ -138,13 +143,13 @@ impl TokenContent {
       _ => None
     }
   }
-  pub fn get_str_list(&self) -> Option<&Vec<CString>>{
+  pub fn get_str_list(&self) -> Option<&Vec<CompactString>>{
     match self {
       TokenContent::StringList(s) => Some(&*s),
       _ => None
     }
   }
-  pub fn get_int_list(&self) -> Option<&Vec<i64>>{
+  pub fn get_int_list(&self) -> Option<&Vec<i32>>{
     match self {
       TokenContent::IntList(s) => Some(&*s),
       _ => None

@@ -76,7 +76,7 @@ fn create_events(_ : &oe::TaskInfo) -> oe::TaskOutput {
 
 fn main() {
 
-    oe::init(640, 480, "Some Rust Demo 2");
+    /*oe::init(640, 480, "Some Rust Demo 2");
     
     oe::set_event_func("keyboard-Space+", |_| {oe::mouse::toggle_lock();vec![]});
     
@@ -92,5 +92,31 @@ fn main() {
     //println!("{}", x);
     let a = EVENTS_LIST.lock().unwrap()[x];
     println!("{:?}", EVENTS_MAP.lock().unwrap()[&(a)]);
-    println!("{:?}", a);
+    println!("{:?}", a);*/
+
+    use std::fs;
+    use std::time::Instant;
+    use oe::carbon::parser::*;
+    use oe::carbon::lexer::*;
+    //let some_str : String = "<Mesh name=\"car 3456 2390476(*^&%*&65\", specular=0.874, id=49, ah=-8 />".to_string();
+
+    let some_str = fs::read_to_string("OE_Demo_50MB.csl").unwrap();
+    //let some_str = fs::read_to_string("OE_VerySimple.csl").unwrap();
+    //println!("{}", some_str);
+
+    let before = Instant::now();
+    //let tokens: Vec<_> = BaseToken::lexer(some_str.as_str()).spanned().collect();
+    let _element = parse_string(&some_str);
+    let after = Instant::now();
+    /*for token in &tokens {
+        println!("{:?}", token.0.as_ref().unwrap());
+    }*/
+    //println!("{}", element.print_oneself());
+    use std::mem::size_of;
+    enum ElementEnum{
+        NormalElement(Element),
+        TriangleElement(TriangleElement),
+    }
+    println!("{:?} {:?} {:?} {:?}", size_of::<ElementEnum>(), size_of::<TokenContent>(), size_of::<Element>(), size_of::<TriangleElement>());
+    println!("{:?}", (after-before).as_secs_f64());
 }

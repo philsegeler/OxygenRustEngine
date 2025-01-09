@@ -2,11 +2,12 @@ use nohash_hasher::*;
 use bimap::{BiMap, Overwritten::Left};
 use std::ops::Index;
 use std::collections::hash_map::Keys;
+use compact_str::CompactString;
 
 #[derive(Debug, Clone)]
 pub struct BaseContainer<T> {
     elements_list_ : IntMap<usize, T>,
-    element_names_ : BiMap<usize, String>,
+    element_names_ : BiMap<usize, CompactString>,
 }
 
 impl<T> Default for BaseContainer<T> {
@@ -31,7 +32,7 @@ impl<T> BaseContainer<T> {
     }
     pub fn insert(&mut self, id : usize, element : T, name : &str) -> usize{
         self.elements_list_.insert(id, element);
-        let old_id = self.element_names_.insert(id, name.to_owned());
+        let old_id = self.element_names_.insert(id, name.into());
         match old_id {
             Left(l, _) => l,
             _ => 0

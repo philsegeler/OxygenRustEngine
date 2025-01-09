@@ -10,6 +10,7 @@ mod event;
 mod task;
 pub mod types;
 pub mod math;
+pub mod carbon;
 
 use dummy_structs::*;
 use task::TaskDataTrait;

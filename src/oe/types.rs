@@ -1,14 +1,14 @@
-mod object_trait;
-mod global_variables;
-mod world;
-mod scene;
-mod mesh;
-mod light;
-mod camera;
-mod viewport;
-mod material;
+pub mod object_trait;
+pub mod global_variables;
+pub mod world;
+pub mod scene;
+pub mod mesh;
+pub mod light;
+pub mod camera;
+pub mod viewport;
+pub mod material;
 pub mod polygonstorage;
-mod polygonstoragetrait;
+pub mod polygonstoragetrait;
 pub mod basecontainer;
 
 //use global_variables::*;
