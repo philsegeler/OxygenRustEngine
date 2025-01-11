@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use super::lexer::*;
-use logos::{Logos};
-use std::ffi::CString;
+use logos::Logos;
+//use std::ffi::CString;
 
 
 use compact_str::CompactString;
@@ -17,10 +17,10 @@ pub struct Element {
 
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub struct TriangleElement{
-    v1 : [i32; 8],
-    v2 : [i32; 8],
-    v3 : [i32; 8],
-    num_of_uvs : u8
+    pub v1 : [i32; 8],
+    pub v2 : [i32; 8],
+    pub v3 : [i32; 8],
+    pub num_of_uvs : u8
 }
 
 impl TriangleElement{
@@ -49,6 +49,19 @@ impl ElementEnum{
         match self {
             ElementEnum::NormalElement(s) => s.print_oneself(),
             ElementEnum::TriangleElement(s) => s.print_oneself(),
+        }
+    }
+
+    pub fn get(&self) -> Option<&Box<Element>>{
+        match self {
+            ElementEnum::NormalElement(s) => Some(s),
+            ElementEnum::TriangleElement(_) => None,
+        }
+    }
+    pub fn get_triangle(&self) -> Option<&TriangleElement>{
+        match self {
+            ElementEnum::TriangleElement(s) => Some(s),
+            _ => None,
         }
     }
 }
@@ -392,8 +405,8 @@ impl<'a, A> Parser<Token<'a>, A> where A : Iterator<Item=Result<Token<'a>, Lexin
     }
 }
 
-pub fn parse_string(input_str : &String) -> Box<Element> {
-    let tokens: _ = Token::lexer(input_str.as_str()).spanned().map(|x| x.0).into_iter();
+pub fn parse_string(input_str : &str) -> Box<Element> {
+    let tokens: _ = Token::lexer(input_str).spanned().map(|x| x.0).into_iter();
     let mut parser = Parser::new(tokens);
 
     parser.parse()

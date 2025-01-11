@@ -3,11 +3,23 @@ use super::object_trait::*;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
 pub enum LightType {
-    Point,
-    Sun,
-    Lamp,
     #[default]
-    CustomLight
+    Point = 0,
+    Sun = 1,
+    Lamp = 2,
+    CustomLight = 3
+}
+
+impl From<i32> for LightType {
+    fn from(value: i32) -> Self {
+        match value {
+            _ if value == LightType::Point as i32 => LightType::Point,
+            _ if value == LightType::Sun as i32 => LightType::Sun,
+            _ if value == LightType::Lamp as i32 => LightType::Lamp,
+            _ if value == LightType::CustomLight as i32 => LightType::CustomLight,
+            _ => LightType::CustomLight,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -21,7 +33,7 @@ pub struct Light {
 }
 
 impl Light {
-    fn new(type_ : LightType, intensity : f32, fov : f32, range : f32) -> Light{
+    pub fn new(type_ : LightType, intensity : f32, fov : f32, range : f32) -> Light{
         Light{
             data_ : CommonObjectData::new(ObjectType::Light),
             type_,

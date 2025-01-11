@@ -1,8 +1,10 @@
 //use std::sync::{Arc, Mutex};
 use std::sync::atomic::{Ordering, AtomicUsize};
+use std::sync::{Arc, Mutex};
+use super::material::Material;
+use compact_str::CompactString;
 use nohash_hasher::IntMap;
 use std::ops::Index;
-
 //use super::material::*;
 
 #[repr(C)]
@@ -22,8 +24,9 @@ pub struct UVMapData{
 
 #[derive(Clone, Debug, Default)]
 pub struct VertexGroup{
+    pub name : CompactString,
     pub polygons : Vec<u32>,
-    //pub material : (usize, Arc<Mutex<Material>>)
+    pub material : Option<(usize, Arc<Mutex<Material>>)>
 }
 
 // polygon vertex key
@@ -116,7 +119,7 @@ impl PolygonStorageData{
     }
 }
 
-pub trait PolygonStorageTrait : Send {
+pub trait PolygonStorageTrait : Send + std::fmt::Debug {
     // functions to implement
     fn get_data(&self) -> Option<&PolygonStorageData>;
     fn get_type(&self) -> PolygonStorageType;

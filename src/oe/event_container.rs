@@ -41,7 +41,7 @@ impl<'a> EventContainer<'a> {
     }
 
     pub fn get_id(&self, event_name : &str) -> Option<usize> {
-        Some(*self.events_list_.get_id(event_name)?)
+        Some(self.events_list_.get_id(event_name)?)
     }
 
     pub fn insert_no_overwrite(&mut self, name : &str, func : Box<dyn EventFuncTrait + 'a>, event_type : EventEnum) -> usize{
@@ -60,7 +60,7 @@ impl<'a> EventContainer<'a> {
     pub fn insert(&mut self, name : &str, func : Box<dyn EventFuncTrait + 'a>, event_type : EventEnum) -> usize {
         let events_list = &mut self.events_list_;
         if events_list.contains_name(name) {
-            let event_id = *events_list.get_id(name).unwrap();
+            let event_id = events_list.get_id(name).unwrap();
             let new_event  = events_list[&event_id].clone();
             events_list.insert(event_id, new_event, name);
             return event_id;
@@ -209,6 +209,6 @@ impl<'a> Index<&str> for EventContainer<'a> {
     type Output = Event<'a>;
     fn index(&self, event_name : &str) -> &Self::Output {
         let id = self.events_list_.get_id(event_name).unwrap();
-        &self.events_list_[id]
+        &self.events_list_[&id]
     }
 }

@@ -36,7 +36,7 @@ impl<'a> TaskManager<'a>{
     pub fn get_task_name(&self, task_id : &usize) -> Option<&str> {
         self.tasks_.get_name(task_id)
     }
-    pub fn get_task_id(&self, task_name : &str) -> Option<&usize> {
+    pub fn get_task_id(&self, task_name : &str) -> Option<usize> {
         self.tasks_.get_id(task_name)
     }
 

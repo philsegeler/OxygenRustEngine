@@ -1,6 +1,6 @@
 use logos::{Logos, Lexer};
 use std::convert::Infallible;
-use std::ffi::CString;
+//use std::ffi::CString;
 use compact_str::CompactString;
 use std::fmt;
 

@@ -33,7 +33,7 @@ impl<'a> TaskContainer<'a> {
         self.tasks_list_.get_name(task_id)
     }
 
-    pub fn get_id(&self, task_name : &str) -> Option<&usize> {
+    pub fn get_id(&self, task_name : &str) -> Option<usize> {
         self.tasks_list_.get_id(task_name)
     }
 
@@ -53,7 +53,7 @@ impl<'a> TaskContainer<'a> {
 
     pub fn insert(&mut self, name : &str, func : Box<dyn TaskFuncTrait + 'a>, task_type : TaskEnum) -> usize {
         if self.tasks_list_.contains_name(name) {
-            let task_id = *self.tasks_list_.get_id(name).unwrap();
+            let task_id = self.tasks_list_.get_id(name).unwrap();
             let new_task = self.tasks_list_[&task_id].clone();
             new_task.set_func(func, Box::new(0));
             self.tasks_list_.insert(task_id, new_task.clone(), name);

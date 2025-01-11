@@ -60,8 +60,8 @@ impl<T> BaseContainer<T> {
     pub fn contains_name(&self, name : &str) -> bool{
         self.element_names_.contains_right(name)
     }
-    pub fn get_id(&self, name : &str) -> Option<&usize> {
-        Some(self.element_names_.get_by_right(name)?)
+    pub fn get_id(&self, name : &str) -> Option<usize> {
+        Some(*self.element_names_.get_by_right(name)?)
     }
     pub fn get_name(&self, id : &usize) -> Option<&str> {
         Some(self.element_names_.get_by_left(id)?)
@@ -83,6 +83,6 @@ impl<T> Index<&str> for BaseContainer<T> {
     type Output = T;
     fn index(&self, name : &str) -> &Self::Output {
         let id = self.get_id(name).unwrap();
-        &self.elements_list_[id]
+        &self.elements_list_[&id]
     }
 }

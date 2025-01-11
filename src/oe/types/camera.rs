@@ -10,7 +10,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    fn new(aspect_ratio : f32, fov : f32, near : f32, far : f32) -> Camera{
+    pub fn new(aspect_ratio : f32, fov : f32, near : f32, far : f32) -> Camera{
         Camera{
             data_ : CommonObjectData::new(ObjectType::Camera),
             aspect_ratio,

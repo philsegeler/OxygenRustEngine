@@ -263,7 +263,7 @@ pub fn get_task_name(thread_id : &usize, id : &usize) -> String {
 pub fn get_task(thread_id : &usize, event_name : &str) -> usize {
     let task_managers = OE_TASK_MANAGERS_.lock().unwrap();
     let task_manager = task_managers[*thread_id].read().unwrap();
-    let output = *task_manager.get_task_id(event_name).unwrap_or(&0);
+    let output = task_manager.get_task_id(event_name).unwrap_or(0);
     output
 }
 

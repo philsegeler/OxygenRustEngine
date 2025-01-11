@@ -13,7 +13,7 @@ pub struct StaticPolygonStorage{
 }
 
 impl StaticPolygonStorage{
-    fn new(dynamic_data : DynamicPolygonStorage) -> StaticPolygonStorage{
+    pub fn new(dynamic_data : DynamicPolygonStorage) -> StaticPolygonStorage{
         StaticPolygonStorage{
             data : dynamic_data.get_data().unwrap().clone(),
             max_index : dynamic_data.get_max_index()
@@ -53,7 +53,7 @@ pub struct SoftbodyPolygonStorage{
 }
 
 impl SoftbodyPolygonStorage{
-    fn new(dynamic_data : DynamicPolygonStorage) -> SoftbodyPolygonStorage{
+    pub fn new(dynamic_data : DynamicPolygonStorage) -> SoftbodyPolygonStorage{
         let mut vertex_buffer : Vec<PolygonVertexKey> =Vec::with_capacity(dynamic_data.indices.len()/(2+dynamic_data.uvmaps.len())/2);
         let mut index_buffer : IntSet<PolygonVertexKey> = Default::default();
 
@@ -262,7 +262,7 @@ pub mod polygonstoragetest{
                                      0, 1, 2, 3,
                                      1, 2, 3, 4,
                                      2, 2, 2, 2];
-        let vgroups = vec![VertexGroup{polygons : vec![0, 1, 2]}, VertexGroup{polygons : vec![0, 1]}];
+        let vgroups = vec![VertexGroup{polygons : vec![0, 1, 2], name:"".into(),material:None}, VertexGroup{polygons : vec![0, 1], name:"".into(), material:None}];
         let dynamic_polygons = DynamicPolygonStorage::new(positions, normals, uvmaps, indices, vgroups);
         println!("{:?}", dynamic_polygons.get_vertex_buffer());
         println!("{:?}", dynamic_polygons.get_index_buffer(0));
@@ -293,7 +293,7 @@ pub fn test_dynamic_polygon_storage_large(triangles_num : usize){
     let uvmaps = vec![UVMapData{elements : uvs1}, UVMapData{elements : uvs2}];
     let indices: Vec<u32> = (0..triangles_num*6).map(|_| rand::random::<u32>()%(triangles_num as u32)).collect();
     let total_vgroups : Vec<u32> = (0..triangles_num*2).map(|_|rand::random::<u32>()%(triangles_num as u32/4)).collect();
-    let vgroups = vec![VertexGroup{polygons : total_vgroups[0..triangles_num].to_owned()}, VertexGroup{polygons:total_vgroups[triangles_num..].to_owned()}];
+    let vgroups = vec![VertexGroup{polygons : total_vgroups[0..triangles_num].to_owned(), name:"".into(), material:None}, VertexGroup{polygons:total_vgroups[triangles_num..].to_owned(), name:"".into(), material:None}];
     
     let before = time::Instant::now();
     let dynamic_polygons = DynamicPolygonStorage::new(positions, normals, uvmaps, indices, vgroups);
