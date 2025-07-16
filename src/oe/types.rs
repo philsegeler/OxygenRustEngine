@@ -1,5 +1,5 @@
 pub mod object_trait;
-pub mod global_variables;
+pub mod global_scenegraph;
 pub mod world;
 pub mod scene;
 pub mod mesh;

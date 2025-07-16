@@ -1,4 +1,6 @@
 use super::object_trait::*;
+use super::camera::*;
+use super::mesh::*;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default)]
@@ -46,6 +48,9 @@ impl Light {
 }
 
 impl ObjectTrait for Light {
+    fn get_camera(&self) -> Option<Camera> {None}
+    fn get_light(&self) -> Option<Light> {Some(self.clone())}
+    fn get_mesh(&self) -> Option<Mesh> {None}
     fn get_data(&self) -> &CommonObjectData {
         &self.data_
     }

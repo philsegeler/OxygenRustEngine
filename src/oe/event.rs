@@ -80,7 +80,7 @@ impl std::fmt::Debug for Event<'_>{
 } 
 
 impl<'a> Event<'a> {
-    pub fn new( func :Option<Box<dyn EventFuncTrait + 'a>>, event_type : EventEnum) -> Event{
+    pub fn new( func :Option<Box<dyn EventFuncTrait + 'a>>, event_type : EventEnum) -> Event<'a>{
         static ID_COUNT : AtomicUsize = AtomicUsize::new(1);
         //static EVENT_TIMESTAMP : LazyLock<time::Instant> = LazyLock::new(||time::Instant::now());
         Event{

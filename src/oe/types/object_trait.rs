@@ -1,8 +1,11 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::oe::math::{self as oe_math, DQuat};
+use super::camera::*;
+use super::mesh::*;
+use super::light::*;
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum ObjectType {
     Mesh,
     Light,
@@ -39,6 +42,9 @@ pub trait ObjectTrait : Send + std::fmt::Debug {
     // trait to be defined functions
     fn get_data(&self) -> &CommonObjectData;
     fn get_data_mut(&mut self) -> &mut CommonObjectData;
+    fn get_camera(&self) -> Option<Camera>;
+    fn get_light(&self) -> Option<Light>;
+    fn get_mesh(&self) -> Option<Mesh>;
 
     // trait functions with default automatic implementations
     fn id(&self) -> usize {

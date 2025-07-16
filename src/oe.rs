@@ -165,6 +165,7 @@ pub extern "C" fn step() -> bool {
     unsafe {
         winsys = OE_WINSYS_.borrow_mut().unwrap();
     }*/
+    // renderer update
     
     let output;
     {
@@ -173,6 +174,9 @@ pub extern "C" fn step() -> bool {
         *update_info = Some(output.update_info.clone());
         *OE_WINSYS_OUTPUT_INFO_.lock().unwrap() = Some(output);
     }
+
+    //pending renderer data
+    //pending interpreter data
 
     OE_WINSYS_.with_borrow_mut(|winsys|winsys.update_events_single_thread());
 
@@ -215,7 +219,7 @@ pub extern "C" fn start() -> bool{
 }
 
 /// task handling
-/// #[no_mangle]
+#[no_mangle]
 pub extern "C" fn create_task_thread() -> usize {
     let mut task_manager_list = OE_TASK_MANAGERS_.lock().unwrap();
     task_manager_list.push(Default::default());
@@ -291,9 +295,9 @@ pub fn get_event_name(id : &usize) -> String {
 }
 
 #[no_mangle]
-pub extern "C" fn broadcast_event_by_id(event_id : &usize) -> bool {
+pub extern "C" fn broadcast_event_by_id(event_id : usize) -> bool {
     let event_handler = OE_EVENT_HANDLER_.read().unwrap();
-    let output = event_handler.as_ref().unwrap().broadcast_event(event_id).unwrap_or(false);
+    let output = event_handler.as_ref().unwrap().broadcast_event(&event_id).unwrap_or(false);
     output
 } 
 
@@ -305,9 +309,9 @@ pub fn broadcast_event(event_name : &str) -> bool {
 } 
 
 #[no_mangle]
-pub extern "C" fn repeat_event_by_id(event_id : &usize) -> bool {
+pub extern "C" fn repeat_event_by_id(event_id : usize) -> bool {
     let event_handler = OE_EVENT_HANDLER_.read().unwrap();
-    let output = event_handler.as_ref().unwrap().repeat_event(event_id).unwrap_or(false);
+    let output = event_handler.as_ref().unwrap().repeat_event(&event_id).unwrap_or(false);
     output
 } 
 

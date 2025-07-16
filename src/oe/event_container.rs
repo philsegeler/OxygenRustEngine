@@ -61,7 +61,7 @@ impl<'a> EventContainer<'a> {
         let events_list = &mut self.events_list_;
         if events_list.contains_name(name) {
             let event_id = events_list.get_id(name).unwrap();
-            let new_event  = events_list[&event_id].clone();
+            let new_event  = events_list[event_id].clone();
             events_list.insert(event_id, new_event, name);
             return event_id;
         }
@@ -201,7 +201,7 @@ impl<'a> EventContainer<'a> {
 impl<'a> Index<&usize> for EventContainer<'a> {
     type Output = Event<'a>;
     fn index(&self, event_id : &usize) -> &Self::Output {
-        &self.events_list_[event_id]
+        &self.events_list_[*event_id]
     }
 }
 
@@ -209,6 +209,6 @@ impl<'a> Index<&str> for EventContainer<'a> {
     type Output = Event<'a>;
     fn index(&self, event_name : &str) -> &Self::Output {
         let id = self.events_list_.get_id(event_name).unwrap();
-        &self.events_list_[&id]
+        &self.events_list_[id]
     }
 }

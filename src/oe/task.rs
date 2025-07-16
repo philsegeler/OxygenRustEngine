@@ -130,7 +130,7 @@ impl cmp::Ord for TaskOrderStruct {
 }
 
 impl<'a> Task<'a> {
-    pub fn new( func :Option<Box<dyn TaskFuncTrait + 'a>>, task_type : TaskEnum) -> Task {
+    pub fn new( func :Option<Box<dyn TaskFuncTrait + 'a>>, task_type : TaskEnum) -> Task<'a> {
         static ID_COUNT : AtomicUsize = AtomicUsize::new(1);
         Task{
             id_ : ID_COUNT.fetch_add(1, Ordering::Relaxed),

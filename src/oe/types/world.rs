@@ -4,7 +4,7 @@ use nohash_hasher::*;
 use super::scene::*;
 use super::viewport::*;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct World{
     pub scenes : IntMap<usize, Arc<Mutex<Scene>>>,
     pub viewports : IntMap<usize, Arc<Mutex<ViewPort>>>,

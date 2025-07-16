@@ -1,6 +1,6 @@
 use std::sync::atomic::{Ordering, AtomicUsize};
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct ViewPort {
     id_ : usize,
     pub layers_ : Vec<u32>,

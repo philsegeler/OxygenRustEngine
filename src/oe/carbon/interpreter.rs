@@ -6,16 +6,17 @@ use nohash_hasher::IntMap;
 
 use super::parser::*;
 use super::super::types::*;
-use super::super::types::global_variables::*;
+use super::super::types::global_scenegraph::*;
 
-#[derive(Default)]
-struct Interpreter{
-    objects_ : ElementWrapper<Box<dyn object_trait::ObjectTrait>>,
-    polygons_ : ElementWrapper<Box<dyn polygonstoragetrait::PolygonStorageTrait>>,
-    scenes_  : ElementWrapper<scene::Scene>,
-    materials_  : ElementWrapper<material::Material>,
-    materials_strong : IntMap<usize, Arc<Mutex<material::Material>>>,
-    viewports_  : ElementWrapper<viewport::ViewPort>,
+#[derive(Default, Clone)]
+pub struct Interpreter{
+    pub objects_ : ElementWrapper<Box<dyn object_trait::ObjectTrait>>,
+    pub polygons_ : ElementWrapper<Box<dyn polygonstoragetrait::PolygonStorageTrait>>,
+    pub scenes_  : ElementWrapper<scene::Scene>,
+    pub materials_  : ElementWrapper<material::Material>,
+    pub materials_strong : IntMap<usize, Arc<Mutex<material::Material>>>,
+    pub viewports_  : ElementWrapper<viewport::ViewPort>,
+    pub world : world::World,
 }
 
 impl Interpreter{
@@ -27,7 +28,7 @@ impl Interpreter{
         println!("[Performance] Time parsing: {:?}", (after-before).as_secs_f64());
 
         let before = Instant::now();
-        let world = self.process_world(&element);
+        self.world = self.process_world(&element);
         let after = Instant::now();
         println!("[Performance] Time interpreting: {:?}", (after-before).as_secs_f64());
         //println!("{:?}", world);
@@ -70,28 +71,31 @@ impl Interpreter{
             let some_id;{
                 some_id = obj.lock().unwrap().id();
             }
-            output_unlocked.materials.insert(some_id, Arc::downgrade(&obj));
+            //output_unlocked.materials.insert(some_id, Arc::downgrade(&obj));
         }
         for base_e in element.elements_ref().get("Camera").unwrap_or(&Default::default()){
             let obj = self.process_camera(&base_e.get().unwrap());
             let some_id;{
                 some_id = obj.lock().unwrap().id();
             }
-            output_unlocked.objects.insert(some_id, obj.clone());
+            let some_name = self.objects_.get_name(&some_id).unwrap();
+            output_unlocked.objects.insert(some_name.into(), obj.clone());
         }
         for base_e in element.elements_ref().get("Light").unwrap_or(&Default::default()){
             let obj = self.process_light(&base_e.get().unwrap());
             let some_id;{
                 some_id = obj.lock().unwrap().id();
             }
-            output_unlocked.objects.insert(some_id, obj.clone());
+            let some_name = self.objects_.get_name(&some_id).unwrap();
+            output_unlocked.objects.insert(some_name.into(), obj.clone());
         }
         for base_e in element.elements_ref().get("Mesh").unwrap_or(&Default::default()){
             let obj = self.process_mesh(&base_e.get().unwrap());
             let some_id;{
                 some_id = obj.lock().unwrap().id();
             }
-            output_unlocked.objects.insert(some_id, obj.clone());
+            let some_name = self.objects_.get_name(&some_id).unwrap();
+            output_unlocked.objects.insert(some_name.into(), obj.clone());
         }
 
         let final_output = output.clone();
@@ -213,7 +217,7 @@ impl Interpreter{
         
         let material_name = element.assignments_ref()["material_id"].get_str().unwrap();
         let material_id = self.materials_.get_id(material_name).unwrap();
-        output.material = Some((material_id, self.materials_strong[&material_id].clone()));
+        output.material = Some((material_name.into(), self.materials_strong[&material_id].clone()));
         
         output
     }

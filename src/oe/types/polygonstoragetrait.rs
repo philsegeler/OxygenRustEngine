@@ -26,7 +26,7 @@ pub struct UVMapData{
 pub struct VertexGroup{
     pub name : CompactString,
     pub polygons : Vec<u32>,
-    pub material : Option<(usize, Arc<Mutex<Material>>)>
+    pub material : Option<(CompactString, Arc<Mutex<Material>>)>
 }
 
 // polygon vertex key
@@ -36,7 +36,7 @@ pub struct PolygonVertexKey<'a>{
 }
 
 impl<'a> PolygonVertexKey<'a>{
-    pub fn new(data : &'a[u32]) -> PolygonVertexKey{
+    pub fn new(data : &'a[u32]) -> PolygonVertexKey<'a>{
         PolygonVertexKey{
             data
         }
@@ -108,6 +108,7 @@ pub struct PolygonStorageData{
     pub index_buffers_ : IntMap<usize, Vec<u32>>,
     pub num_of_uvs : u8,
     pub vgroups : Vec<VertexGroup>,
+    pub max_index : usize,
 }
 impl PolygonStorageData{
     pub fn new(vgroups : Vec<VertexGroup>) -> PolygonStorageData{
@@ -126,6 +127,15 @@ pub trait PolygonStorageTrait : Send + std::fmt::Debug {
     fn regenerate_data(&mut self);
 
     // derived functions
+
+    fn get_max_index(&self) -> Option<usize> {
+        if self.get_data().unwrap().max_index == 0 {
+            None
+        }
+        else {
+            Some(self.get_data().unwrap().max_index)
+        }
+    }
 
     fn get_vgroups(&self) -> &Vec<VertexGroup>{
         &self.get_data().unwrap().vgroups

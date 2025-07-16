@@ -1,5 +1,6 @@
 extern crate nalgebra_glm as glm;
 
+#[repr(transparent)]
 pub struct DVec4 {
     data : glm::DVec4,
 }
@@ -49,6 +50,7 @@ impl std::ops::IndexMut<usize> for DVec4
     }
 }
 
+#[repr(transparent)]
 pub struct DVec3 {
     data : glm::DVec3,
 }
@@ -75,6 +77,7 @@ impl std::ops::Index<usize> for DVec3
 }
 
 // MATRIX 4x4
+#[repr(transparent)]
 #[derive(Clone)]
 pub struct DMat4x4 {
     data : glm::DMat4,
@@ -119,6 +122,7 @@ impl std::ops::Mul<DVec4> for DMat4x4 {
 }
 
 // QUATERNION 
+#[repr(transparent)]
 pub struct DQuat {
     data : glm::DQuat,
 }

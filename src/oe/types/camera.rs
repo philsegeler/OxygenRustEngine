@@ -1,4 +1,6 @@
 use super::object_trait::*;
+use super::light::*;
+use super::mesh::*;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Camera {
@@ -22,6 +24,9 @@ impl Camera {
 }
 
 impl ObjectTrait for Camera {
+    fn get_camera(&self) -> Option<Camera> {Some(self.clone())}
+    fn get_light(&self) -> Option<Light> {None}
+    fn get_mesh(&self) -> Option<Mesh> {None}
     fn get_data(&self) -> &CommonObjectData {
         &self.data_
     }

@@ -1,10 +1,12 @@
 use std::sync::{Arc, Mutex};
+use super::camera::*;
+use super::light::*;
 
 use super::object_trait::*;
 use super::polygonstorage::{DynamicPolygonStorage, StaticPolygonStorage};
 use super::polygonstoragetrait::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Mesh {
     data_ : CommonObjectData,
     polygon_storage_ : (usize, Arc<Mutex<Box<dyn PolygonStorageTrait>>>),
@@ -20,6 +22,9 @@ impl Mesh {
 }
 
 impl ObjectTrait for Mesh {
+    fn get_camera(&self) -> Option<Camera> {None}
+    fn get_light(&self) -> Option<Light> {None}
+    fn get_mesh(&self) -> Option<Mesh> {Some(self.clone())}
     fn get_data(&self) -> &CommonObjectData {
         &self.data_
     }

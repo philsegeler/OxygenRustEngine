@@ -48,9 +48,9 @@ fn broadcast_all_events(_ : &oe::TaskInfo) -> oe::TaskOutput {
 
     let eh = EVENTS_LIST.lock().unwrap();
     eh[0..ACTIVE_EVENTS].iter().for_each(|i|{
-        oe::broadcast_event_by_id(i);
+        oe::broadcast_event_by_id(*i);
     });
-    oe::broadcast_event_by_id(&eh[rand::random::<usize>() % (eh.len() as usize)]);
+    oe::broadcast_event_by_id(eh[rand::random::<usize>() % (eh.len() as usize)]);
     oe::TaskOutput::Keep
 }
 
@@ -68,7 +68,7 @@ fn create_events(_ : &oe::TaskInfo) -> oe::TaskOutput {
         EVENTS_LIST.lock().unwrap().push(event_id);
 
     }
-    oe::broadcast_event_by_id(&broadcast_event);
+    oe::broadcast_event_by_id(broadcast_event);
     println!("Finished creating tasks");
     oe::TaskOutput::Drop
 }
@@ -94,7 +94,6 @@ fn main() {
     println!("{:?}", EVENTS_MAP.lock().unwrap()[&(a)]);
     println!("{:?}", a);*/
 
-    use std::fs;
     use std::time::Instant;
     use oe::carbon::parser::*;
     use oe::carbon::lexer::*;
@@ -115,11 +114,9 @@ fn main() {
         println!("{:?}", token.0.as_ref().unwrap());
     }*/
     //println!("{}", element.print_oneself());
+
+    use std::borrow::Cow;
     use std::mem::size_of;
-    enum ElementEnum{
-        NormalElement(Element),
-        TriangleElement(TriangleElement),
-    }
-    println!("{:?} {:?} {:?} {:?}", size_of::<ElementEnum>(), size_of::<TokenContent>(), size_of::<Element>(), size_of::<TriangleElement>());
+    println!("{:?} {:?} {:?} {:?}", size_of::<ElementEnum>(), size_of::<TokenContent>(), size_of::<Cow<'_, str>>(), size_of::<TriangleElement>());
     println!(" Total time: {:?}", (after-before).as_secs_f64());
 }

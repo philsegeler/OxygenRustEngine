@@ -54,7 +54,7 @@ impl<'a> TaskContainer<'a> {
     pub fn insert(&mut self, name : &str, func : Box<dyn TaskFuncTrait + 'a>, task_type : TaskEnum) -> usize {
         if self.tasks_list_.contains_name(name) {
             let task_id = self.tasks_list_.get_id(name).unwrap();
-            let new_task = self.tasks_list_[&task_id].clone();
+            let new_task = self.tasks_list_[task_id].clone();
             new_task.set_func(func, Box::new(0));
             self.tasks_list_.insert(task_id, new_task.clone(), name);
             self.sorted_tasks_.push(new_task.get_order_struct());
@@ -88,7 +88,7 @@ impl<'a> TaskContainer<'a> {
     }
 
     pub fn remove(&mut self, task_id : usize){
-        let task = self.tasks_list_[&task_id].clone();
+        let task = self.tasks_list_[task_id].clone();
         self.tasks_list_.remove(&task_id);
         self.sorted_tasks_.remove_item(&task.get_order_struct());
     }
@@ -134,7 +134,7 @@ impl<'a> TaskContainer<'a> {
 impl<'a> Index<&usize> for TaskContainer<'a> {
     type Output = Task<'a>;
     fn index(&self, task_id : &usize) -> &Self::Output {
-        &self.tasks_list_[task_id]
+        &self.tasks_list_[*task_id]
     }
 }
 

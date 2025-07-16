@@ -8,15 +8,13 @@ use nohash_hasher::{IntMap, IntSet};
 // STATIC MAP DERIVED FROM DYNAMIC
 #[derive(Default, Clone, Debug)]
 pub struct StaticPolygonStorage{
-    data : PolygonStorageData,
-    max_index : usize,
+    pub data : PolygonStorageData,
 }
 
 impl StaticPolygonStorage{
     pub fn new(dynamic_data : DynamicPolygonStorage) -> StaticPolygonStorage{
         StaticPolygonStorage{
-            data : dynamic_data.get_data().unwrap().clone(),
-            max_index : dynamic_data.get_max_index()
+            data : dynamic_data.get_data().unwrap().clone()
         }
     }
 }
@@ -48,7 +46,6 @@ pub struct SoftbodyPolygonStorage{
     vertex_buffer_ : Vec<Box<[u32]>>,
 
     data : PolygonStorageData,
-    max_index : usize,
     regenerated_data : bool
 }
 
@@ -69,7 +66,6 @@ impl SoftbodyPolygonStorage{
         SoftbodyPolygonStorage{
             data : dynamic_data.get_data().unwrap().clone(),
             vertex_buffer_ : vertex_buffer.iter().map(|x| x.to_owned()).collect(),
-            max_index : dynamic_data.get_max_index(),
             positions : dynamic_data.positions,
             normals : dynamic_data.normals,
             uvmaps: dynamic_data.uvmaps,

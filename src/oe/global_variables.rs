@@ -1,16 +1,20 @@
 
 use core::cell::RefCell;
 use std::sync::{Arc, Mutex, atomic::AtomicBool, LazyLock};
+use super::types::global_scenegraph::GlobalScenegraph;
+
 //use no_deadlocks::Mutex;
 use super::base_traits::*;
 use super::task_manager::*;
 use super::dummy_structs::*;
 use super::event_handler::*;
 use std::thread;
+//use super::types::global_scenegraph::*;
 //trait OE_RendererBaseTrait : Send{}
 //struct oe_renderer_init_info_t {x : i32}
 
 // STATIC VARIABLES
+pub static OE_SCENEGRAPH_ : LazyLock<Arc<Mutex<GlobalScenegraph>>> = LazyLock::new(||{Arc::new(Mutex::new(Default::default()))});
 
 pub const OE_USE_MULTIPLE_THREADS_ : bool = true;
 
