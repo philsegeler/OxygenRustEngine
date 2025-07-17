@@ -151,7 +151,7 @@ impl<'a> EventContainer<'a> {
             happened_events_counter_ : Arc::clone(&self.happened_events_counter_)
         }
     }
-        // HAS TO BE READ ONLY
+    // HAS TO BE READ ONLY
     pub fn handle_all_events(&self, updated_time : &time::Instant) -> Option<bool>{
 
         //let pool = ThreadPoolBuilder::new().build().unwrap();

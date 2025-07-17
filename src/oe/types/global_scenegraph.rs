@@ -1,5 +1,4 @@
 use std::sync::{Arc, Weak, Mutex, LazyLock};
-use crate::oe::types::polygonstorage::StaticPolygonStorage;
 
 use super::object_trait::*;
 use super::world::*;
@@ -7,12 +6,12 @@ use super::scene::*;
 use super::material::*;
 use super::viewport::*;
 use super::polygonstoragetrait::*;
+use super::polygonstorage::*;
 use super::basecontainer::*;
 use super::super::carbon::interpreter::Interpreter;
+use super::elementcontainer::*;
 
-
-pub type ElementWrapper<T> = BaseContainer<Weak<Mutex<T>>>;
-pub type GlobalElementWrapper<T> = LazyLock<Arc<Mutex<ElementWrapper<T>>>>;
+pub type ElementWrapper<T> = ElementContainer<Weak<Mutex<T>>>;
 type GlobalVar<T> = LazyLock<Arc<Mutex<T>>>;
 
 #[derive(Default, Clone)]
@@ -31,7 +30,7 @@ pub struct GlobalScenegraphSimple {
     world_     : Option<World>,
     scenes_    : BaseContainer<Scene>,
     objects_   : BaseContainer<Box<dyn ObjectTrait>>,
-    polygons_  : BaseContainer<StaticPolygonStorage>,
+    polygons_  : BaseContainer<RendererPolygonStorage>,
     materials_ : BaseContainer<Material>,
     viewports_ : BaseContainer<ViewPort>,
 
@@ -39,19 +38,29 @@ pub struct GlobalScenegraphSimple {
 
 
 impl GlobalScenegraph{
-    pub fn update(&mut self) -> GlobalScenegraphSimple {
+    pub fn update(&mut self, changed : bool) -> GlobalScenegraphSimple {
         // delete unnecessary
+        self.scenes_.cleanup();
+        self.objects_.cleanup();
+        self.polygons_.cleanup();
+        self.materials_.cleanup();
+        self.viewports_.cleanup();
 
         // output
         let output = GlobalScenegraphSimple{
             world_ : self.world_.clone(),
             scenes_ : self.scenes_.get_real(),
             objects_ : self.objects_.get_real(),
-            polygons_ : self.polygons_.get_real(),
+            polygons_ : self.polygons_.get_real(changed),
             materials_ : self.materials_.get_real(),
             viewports_ : self.viewports_.get_real(),
         };
         // update interpreter
+        for inter in self.pending_elements_.drain(..){
+            if inter.world.is_some(){
+                self.world_ = inter.world;
+            }
+        }
         output
     }
 }

@@ -1,13 +1,9 @@
 use nohash_hasher::*;
 use bimap::{BiMap, Overwritten::Left};
-use std::sync::{Weak, Mutex, Arc};
 use std::ops::Index;
 use std::collections::hash_map::Keys;
 use compact_str::CompactString;
 
-use crate::oe::types::object_trait::*;
-use crate::oe::types::polygonstorage::StaticPolygonStorage;
-use crate::oe::types::polygonstoragetrait::PolygonStorageTrait;
 
 #[derive(Debug, Clone)]
 pub struct BaseContainer<T> {
@@ -24,75 +20,17 @@ impl<T> Default for BaseContainer<T> {
     }
 }
 
-impl<T> BaseContainer<Weak<Mutex<T>>>{
-    pub fn cleanup(&mut self){
-        let elements : Vec<usize> = self.elements_list_.iter().map(|(x, _)| *x).collect();
-        for id in elements{
-            let elem = self.elements_list_[&id].upgrade();
-            match elem {
-                Some(x) => continue,
-                None => self.remove(&id),
-            }
-        }
-    }
-    pub fn get_strong_elements(&self) -> IntMap<usize, Arc<Mutex<T>>> {
-        self.elements_list_.iter().map(|(id, element)| {(*id, element.upgrade().unwrap())}).collect()
-    }
-}
-
-impl<T> BaseContainer<Weak<Mutex<T>>> where T : Clone{
-    pub fn get_real_elements(&self) -> IntMap<usize, T> {
-        self.elements_list_.iter().map(|(id, element)| {
-            let arced = element.upgrade().unwrap();
-            let locked = arced.lock().unwrap();
-            (*id, locked.clone())
-        }).collect()
-    }
-
-    pub fn get_real(&self) -> BaseContainer<T> {
-        BaseContainer { elements_list_: self.get_real_elements(), element_names_: self.element_names_.clone()}
-    }
-}
-
-impl BaseContainer<Weak<Mutex<Box<dyn ObjectTrait>>>>{
-    pub fn get_real_elements(&self) -> IntMap<usize, Box<dyn ObjectTrait>> {
-        self.elements_list_.iter()
-         .map(|(id, element)| {
-            let arced = element.upgrade().unwrap();
-            let locked = arced.lock().unwrap();
-            let output = match locked.get_type(){
-                ObjectType::Camera => Some(Box::new(locked.get_camera().unwrap()) as Box<dyn ObjectTrait>),
-                ObjectType::Light => Some(Box::new(locked.get_light().unwrap()) as Box<dyn ObjectTrait>),
-                ObjectType::Mesh => Some(Box::new(locked.get_mesh().unwrap()) as Box<dyn ObjectTrait>),
-                _ => None
-            };
-            (*id, output.unwrap())
-        }).collect()
-    }
-
-    pub fn get_real(&self) -> BaseContainer<Box<dyn ObjectTrait>> {
-        BaseContainer { elements_list_: self.get_real_elements(), element_names_: self.element_names_.clone()}
-    }
-}
-
-impl BaseContainer<Weak<Mutex<Box<dyn PolygonStorageTrait>>>>{
-    pub fn get_real_elements(&self) -> IntMap<usize, StaticPolygonStorage> {
-        self.elements_list_.iter()
-         .map(|(id, element)| {
-            let arced = element.upgrade().unwrap();
-            let locked = arced.lock().unwrap();
-            (*id, StaticPolygonStorage{data : locked.get_data().unwrap().clone()})
-        }).collect()
-    }
-
-    pub fn get_real(&self) -> BaseContainer<StaticPolygonStorage> {
-        BaseContainer { elements_list_: self.get_real_elements(), element_names_: self.element_names_.clone()}
-    }
-}
-
 
 impl<T> BaseContainer<T> {
-
+    pub fn new(elements_list_ : IntMap<usize, T>, element_names_ : BiMap<usize, CompactString>) -> BaseContainer<T>{
+        BaseContainer { elements_list_, element_names_}
+    }
+    pub fn elements(&self) -> &IntMap<usize, T>{
+        &self.elements_list_
+    }
+    pub fn names(&self) -> &BiMap<usize, CompactString>{
+        &self.element_names_
+    }
     pub fn get(&self, id : &usize) -> Option<&T> {
         self.elements_list_.get(id)
     }
@@ -141,6 +79,22 @@ impl<T> BaseContainer<T> {
     pub fn remove(&mut self, id : &usize){
         self.elements_list_.remove(id);
         self.element_names_.remove_by_left(id);
+    }
+    pub fn pop(&mut self, id : usize) -> T{
+        self.element_names_.remove_by_left(&id);
+        self.elements_list_.remove_entry(&id).unwrap().1
+    }
+    pub fn extend(&mut self, mut other : BaseContainer<T>) -> Vec<usize>{
+        let mut output = Vec::with_capacity(other.len());
+        for (id, name) in other.element_names_.clone(){
+            output.push(self.insert(id, other.pop(id), &name));
+        }
+        output
+    }
+    pub fn extend_no_overwrite(&mut self, mut other : BaseContainer<T>){
+        for (id, name) in other.element_names_.clone(){
+            self.insert_no_overwrite(id, other.pop(id), &name);
+        }
     }
 }
 

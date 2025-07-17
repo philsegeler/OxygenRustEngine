@@ -109,7 +109,9 @@ pub struct PolygonStorageData{
     pub num_of_uvs : u8,
     pub vgroups : Vec<VertexGroup>,
     pub max_index : usize,
+    pub changed : bool,
 }
+
 impl PolygonStorageData{
     pub fn new(vgroups : Vec<VertexGroup>) -> PolygonStorageData{
         static ID_COUNT : AtomicUsize = AtomicUsize::new(1);
@@ -127,6 +129,9 @@ pub trait PolygonStorageTrait : Send + std::fmt::Debug {
     fn regenerate_data(&mut self);
 
     // derived functions
+    fn has_changed(&self) -> bool{
+        self.get_data().unwrap().changed
+    }
 
     fn get_max_index(&self) -> Option<usize> {
         if self.get_data().unwrap().max_index == 0 {

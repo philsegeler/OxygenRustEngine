@@ -16,7 +16,7 @@ pub struct Interpreter{
     pub materials_  : ElementWrapper<material::Material>,
     pub materials_strong : IntMap<usize, Arc<Mutex<material::Material>>>,
     pub viewports_  : ElementWrapper<viewport::ViewPort>,
-    pub world : world::World,
+    pub world : Option<world::World>,
 }
 
 impl Interpreter{
@@ -28,7 +28,7 @@ impl Interpreter{
         println!("[Performance] Time parsing: {:?}", (after-before).as_secs_f64());
 
         let before = Instant::now();
-        self.world = self.process_world(&element);
+        self.world = Some(self.process_world(&element));
         let after = Instant::now();
         println!("[Performance] Time interpreting: {:?}", (after-before).as_secs_f64());
         //println!("{:?}", world);
@@ -67,10 +67,10 @@ impl Interpreter{
         let mut output_unlocked = output.lock().unwrap();
         
         for base_e in element.elements_ref().get("Material").unwrap_or(&Default::default()){
-            let obj = self.process_material(&base_e.get().unwrap());
-            let some_id;{
-                some_id = obj.lock().unwrap().id();
-            }
+            let _ = self.process_material(&base_e.get().unwrap());
+            //let some_id;{
+            //    some_id = obj.lock().unwrap().id();
+            //}
             //output_unlocked.materials.insert(some_id, Arc::downgrade(&obj));
         }
         for base_e in element.elements_ref().get("Camera").unwrap_or(&Default::default()){

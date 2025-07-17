@@ -5,6 +5,26 @@ use super::polygonstoragetrait::*;
 use nohash_hasher::{IntMap, IntSet};
 //use std::ops::Index;
 
+// RendererPolygonStorage
+#[derive(Default, Clone, Debug)]
+pub struct RendererPolygonStorage{
+    pub data : Option<PolygonStorageData>
+}
+
+impl PolygonStorageTrait for RendererPolygonStorage {
+    fn get_data(&self) -> Option<&PolygonStorageData> {
+        self.data.as_ref()
+    }
+    fn get_type(&self) -> PolygonStorageType{
+        PolygonStorageType::Static
+    }
+    
+    // only useful for dynamic meshes
+    fn regenerate_data(&mut self) {
+        
+    }
+}
+
 // STATIC MAP DERIVED FROM DYNAMIC
 #[derive(Default, Clone, Debug)]
 pub struct StaticPolygonStorage{
