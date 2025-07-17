@@ -8,13 +8,13 @@ use super::parser::*;
 use super::super::types::*;
 use super::super::types::global_scenegraph::*;
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug)]
 pub struct Interpreter{
     pub objects_ : ElementWrapper<Box<dyn object_trait::ObjectTrait>>,
     pub polygons_ : ElementWrapper<Box<dyn polygonstoragetrait::PolygonStorageTrait>>,
     pub scenes_  : ElementWrapper<scene::Scene>,
     pub materials_  : ElementWrapper<material::Material>,
-    pub materials_strong : IntMap<usize, Arc<Mutex<material::Material>>>,
+    pub materials_strong : IntMap<usize, Arc<Mutex<(material::Material, bool)>>>,
     pub viewports_  : ElementWrapper<viewport::ViewPort>,
     pub world : Option<world::World>,
 }
@@ -40,17 +40,19 @@ impl Interpreter{
         for base_e in &element.elements_ref()["Scene"]{
             let scene = self.process_scene(&base_e.get().unwrap());
             let some_id;{
-                some_id = scene.lock().unwrap().id();
+                some_id = scene.lock().unwrap().0.id();
             }
-            output.scenes.insert(some_id, scene.clone());
+            let some_name = self.scenes_.get_name(&some_id).unwrap();
+            output.scenes.insert(some_name.into(), scene.clone());
         }
 
         for base_e in element.elements_ref().get("ViewportConfig").unwrap_or(&Default::default()){
             let viewport = self.process_viewport(&base_e.get().unwrap());
             let some_id;{
-                some_id = viewport.lock().unwrap().id();
+                some_id = viewport.lock().unwrap().0.id();
             }
-            output.viewports.insert(some_id, viewport.clone());
+            let some_name = self.viewports_.get_name(&some_id).unwrap();
+            output.viewports.insert(some_name.into(), viewport.clone());
         }
         
         let loaded_scene = element.assignments_ref()["loaded_scene"].get_str().unwrap();
@@ -62,8 +64,8 @@ impl Interpreter{
         output
     }
 
-    fn process_scene(&mut self, element : &Element) -> Arc<Mutex<scene::Scene>>{
-        let output = Arc::new(Mutex::new(scene::Scene::new()));
+    fn process_scene(&mut self, element : &Element) -> Arc<Mutex<(scene::Scene, bool)>>{
+        let output = Arc::new(Mutex::new((scene::Scene::new(), true)));
         let mut output_unlocked = output.lock().unwrap();
         
         for base_e in element.elements_ref().get("Material").unwrap_or(&Default::default()){
@@ -76,35 +78,34 @@ impl Interpreter{
         for base_e in element.elements_ref().get("Camera").unwrap_or(&Default::default()){
             let obj = self.process_camera(&base_e.get().unwrap());
             let some_id;{
-                some_id = obj.lock().unwrap().id();
+                some_id = obj.lock().unwrap().0.id();
             }
             let some_name = self.objects_.get_name(&some_id).unwrap();
-            output_unlocked.objects.insert(some_name.into(), obj.clone());
+            output_unlocked.0.objects.insert(some_name.into(), obj.clone());
         }
         for base_e in element.elements_ref().get("Light").unwrap_or(&Default::default()){
             let obj = self.process_light(&base_e.get().unwrap());
             let some_id;{
-                some_id = obj.lock().unwrap().id();
+                some_id = obj.lock().unwrap().0.id();
             }
             let some_name = self.objects_.get_name(&some_id).unwrap();
-            output_unlocked.objects.insert(some_name.into(), obj.clone());
+            output_unlocked.0.objects.insert(some_name.into(), obj.clone());
         }
         for base_e in element.elements_ref().get("Mesh").unwrap_or(&Default::default()){
             let obj = self.process_mesh(&base_e.get().unwrap());
             let some_id;{
-                some_id = obj.lock().unwrap().id();
+                some_id = obj.lock().unwrap().0.id();
             }
             let some_name = self.objects_.get_name(&some_id).unwrap();
-            output_unlocked.objects.insert(some_name.into(), obj.clone());
+            output_unlocked.0.objects.insert(some_name.into(), obj.clone());
         }
 
         let final_output = output.clone();
-        self.scenes_.insert(output_unlocked.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.scenes_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
         final_output
     }
 
-    fn process_camera(&mut self, element : &Element) -> Arc<Mutex<Box<dyn object_trait::ObjectTrait>>>{
-        use object_trait::*;
+    fn process_camera(&mut self, element : &Element) -> Arc<Mutex<(Box<dyn object_trait::ObjectTrait>, bool)>>{
 
         let ar = element.assignments_ref()["aspect_ratio"].get_float().unwrap() as f32;
         let fov = element.assignments_ref()["fov"].get_float().unwrap() as f32;
@@ -112,11 +113,11 @@ impl Interpreter{
         let far = element.assignments_ref()["far"].get_float().unwrap() as f32;
         
 
-        let output: Arc<Mutex<Box<dyn ObjectTrait>>> = Arc::new(Mutex::new(Box::new(camera::Camera::new(ar, fov, near, far))));
+        let output:  Arc<Mutex<(Box<dyn object_trait::ObjectTrait>, bool)>> = Arc::new(Mutex::new((Box::new(camera::Camera::new(ar, fov, near, far)), true)));
         let mut output_unlocked = output.lock().unwrap();
 
         let cs_v = element.assignments_ref()["current_state"].get_float_list().unwrap();
-        let data = output_unlocked.get_data_mut();
+        let data = output_unlocked.0.get_data_mut();
         data.pos = [cs_v[0], cs_v[1], cs_v[2]];
         data.rot = [cs_v[3], cs_v[4], cs_v[5], cs_v[6]];
         data.sca = [cs_v[7], cs_v[8], cs_v[9]];
@@ -128,12 +129,11 @@ impl Interpreter{
         data.visible = visible != 0;
 
         let final_output = output.clone();
-        self.objects_.insert(output_unlocked.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.objects_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
         final_output
     }
 
-    fn process_light(&mut self, element : &Element) -> Arc<Mutex<Box<dyn object_trait::ObjectTrait>>>{
-        use object_trait::*;
+    fn process_light(&mut self, element : &Element) -> Arc<Mutex<(Box<dyn object_trait::ObjectTrait>, bool)>>{
 
         let ltype = LightType::from(element.assignments_ref()["light_type"].get_int().unwrap());
         let fov = element.assignments_ref()["fov"].get_float().unwrap() as f32;
@@ -141,11 +141,11 @@ impl Interpreter{
         let intensity = element.assignments_ref()["intensity"].get_float().unwrap() as f32;
         
 
-        let output: Arc<Mutex<Box<dyn ObjectTrait>>> = Arc::new(Mutex::new(Box::new(light::Light::new(ltype, intensity, fov, range))));
+        let output: Arc<Mutex<(Box<dyn object_trait::ObjectTrait>, bool)>> = Arc::new(Mutex::new((Box::new(light::Light::new(ltype, intensity, fov, range)), true)));
         let mut output_unlocked = output.lock().unwrap();
 
         let cs_v = element.assignments_ref()["current_state"].get_float_list().unwrap();
-        let data = output_unlocked.get_data_mut();
+        let data = output_unlocked.0.get_data_mut();
         data.pos = [cs_v[0], cs_v[1], cs_v[2]];
         data.rot = [cs_v[3], cs_v[4], cs_v[5], cs_v[6]];
         data.sca = [cs_v[7], cs_v[8], cs_v[9]];
@@ -157,13 +157,13 @@ impl Interpreter{
         data.visible = visible != 0;
 
         let final_output = output.clone();
-        self.objects_.insert(output_unlocked.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.objects_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
         final_output
     }
 
-    fn process_mesh(&mut self, element : &Element) -> Arc<Mutex<Box<dyn object_trait::ObjectTrait>>>{
-        use object_trait::*;
+    fn process_mesh(&mut self, element : &Element) -> Arc<Mutex<(Box<dyn object_trait::ObjectTrait>, bool)>>{
 
+        let name = element.attributes_ref()["name"].get_str().unwrap();
         let positions = element.assignments_ref()["vertices"].get_float_list().unwrap().iter().map(|x| *x as f32).collect();
         let normals = element.assignments_ref()["normals"].get_float_list().unwrap().iter().map(|x| *x as f32).collect();
         let mut vgroups : Vec<VertexGroup> = Default::default();
@@ -188,11 +188,11 @@ impl Interpreter{
         }
         
 
-        let output: Arc<Mutex<Box<dyn ObjectTrait>>> = Arc::new(Mutex::new(Box::new(mesh::Mesh::new_static(positions, normals, uvmaps, indices, vgroups))));
+        let output: Arc<Mutex<(Box<dyn object_trait::ObjectTrait>, bool)>> = Arc::new(Mutex::new((Box::new(mesh::Mesh::new_static(positions, normals, uvmaps, indices, vgroups, name)), true)));
         let mut output_unlocked = output.lock().unwrap();
 
         let cs_v = element.assignments_ref()["current_state"].get_float_list().unwrap();
-        let data = output_unlocked.get_data_mut();
+        let data = output_unlocked.0.get_data_mut();
         data.pos = [cs_v[0], cs_v[1], cs_v[2]];
         data.rot = [cs_v[3], cs_v[4], cs_v[5], cs_v[6]];
         data.sca = [cs_v[7], cs_v[8], cs_v[9]];
@@ -204,7 +204,7 @@ impl Interpreter{
         data.visible = visible != 0;
 
         let final_output = output.clone();
-        self.objects_.insert(output_unlocked.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.objects_.insert(output_unlocked.0.id(), Arc::downgrade(&output), name);
         final_output
     }
 
@@ -222,8 +222,8 @@ impl Interpreter{
         output
     }
 
-    fn process_material(&mut self, element : &Element) -> Arc<Mutex<material::Material>>{
-        let output: Arc<Mutex<material::Material>> = Arc::new(Mutex::new(material::Material::new()));
+    fn process_material(&mut self, element : &Element) -> Arc<Mutex<(material::Material, bool)>>{
+        let output: Arc<Mutex<(material::Material, bool)>> = Arc::new(Mutex::new((material::Material::new(), true)));
         let mut output_unlocked = output.lock().unwrap();
         
         let dif_r = element.assignments_ref()["dif_r"].get_float().unwrap() as f32;
@@ -235,36 +235,35 @@ impl Interpreter{
         let scol_g = element.assignments_ref()["scol_g"].get_float().unwrap() as f32;
         let scol_b = element.assignments_ref()["scol_b"].get_float().unwrap() as f32;
 
-        output_unlocked.dif_ = [dif_r, dif_g, dif_b, dif_a];
-        output_unlocked.scol = [scol_r, scol_g, scol_b];
-        output_unlocked.alpha = element.assignments_ref()["alpha"].get_float().unwrap() as f32;
-        output_unlocked.translucency = element.assignments_ref()["translucency"].get_float().unwrap() as f32;
-        output_unlocked.illuminosity = element.assignments_ref()["illuminosity"].get_float().unwrap() as f32;
-        output_unlocked.specular_intensity = element.assignments_ref()["specular_intensity"].get_float().unwrap() as f32;
-        output_unlocked.specular_hardness = element.assignments_ref()["specular_hardness"].get_float().unwrap() as f32;
+        output_unlocked.0.dif_ = [dif_r, dif_g, dif_b, dif_a];
+        output_unlocked.0.scol = [scol_r, scol_g, scol_b];
+        output_unlocked.0.alpha = element.assignments_ref()["alpha"].get_float().unwrap() as f32;
+        output_unlocked.0.translucency = element.assignments_ref()["translucency"].get_float().unwrap() as f32;
+        output_unlocked.0.illuminosity = element.assignments_ref()["illuminosity"].get_float().unwrap() as f32;
+        output_unlocked.0.specular_intensity = element.assignments_ref()["specular_intensity"].get_float().unwrap() as f32;
+        output_unlocked.0.specular_hardness = element.assignments_ref()["specular_hardness"].get_float().unwrap() as f32;
 
         let final_output = output.clone();
-        self.materials_.insert(output_unlocked.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
-        self.materials_strong.insert(output_unlocked.id(), final_output.clone());
+        self.materials_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.materials_strong.insert(output_unlocked.0.id(), final_output.clone());
         final_output
     }
 
-    fn process_viewport(&mut self, element : &Element) -> Arc<Mutex<viewport::ViewPort>>{
-        let output: Arc<Mutex<viewport::ViewPort>> = Arc::new(Mutex::new(viewport::ViewPort::new()));
+    fn process_viewport(&mut self, element : &Element) -> Arc<Mutex<(viewport::ViewPort, bool)>>{
+        let output: Arc<Mutex<(viewport::ViewPort, bool)>> = Arc::new(Mutex::new((viewport::ViewPort::new(), true)));
         let mut output_unlocked = output.lock().unwrap();
         
-        output_unlocked.split_screen_positions_ = element.assignments_ref()["split_screen_positions"].get_float_list().unwrap().iter().map(|x| *x as f32).collect(); 
-        output_unlocked.layer_combine_modes_ = element.assignments_ref()["layer_combine_modes"].get_int_list().unwrap().iter().map(|x| *x as u32).collect(); 
+        output_unlocked.0.split_screen_positions_ = element.assignments_ref()["split_screen_positions"].get_float_list().unwrap().iter().map(|x| *x as f32).collect(); 
+        output_unlocked.0.layer_combine_modes_ = element.assignments_ref()["layer_combine_modes"].get_int_list().unwrap().iter().map(|x| *x as u32).collect(); 
         
         let cameras = element.assignments_ref()["cameras"].get_str_list().unwrap();
 
         for cam_name in cameras{
-            let camera_id = self.objects_.get_id(cam_name).unwrap();
-            output_unlocked.cameras_.push(camera_id);
+            output_unlocked.0.cameras_.push(cam_name.clone());
         }
         
         let final_output = output.clone();
-        self.viewports_.insert(output_unlocked.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.viewports_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
         final_output
     }
 

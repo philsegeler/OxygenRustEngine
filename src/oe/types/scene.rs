@@ -9,7 +9,7 @@ use super::object_trait::*;
 #[derive(Default, Clone, Debug)]
 pub struct Scene{
     id_ : usize,
-    pub objects : HashMap<CompactString, Arc<Mutex<Box<dyn ObjectTrait>>>>,
+    pub objects : HashMap<CompactString, Arc<Mutex<(Box<dyn ObjectTrait>, bool)>>>,
 }
 
 pub struct SceneRenderData{

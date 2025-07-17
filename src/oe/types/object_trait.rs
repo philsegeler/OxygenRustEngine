@@ -38,7 +38,7 @@ impl CommonObjectData {
     }
 }
 
-pub trait ObjectTrait : Send + std::fmt::Debug {
+pub trait ObjectTrait : Send + std::fmt::Debug{
     // trait to be defined functions
     fn get_data(&self) -> &CommonObjectData;
     fn get_data_mut(&mut self) -> &mut CommonObjectData;

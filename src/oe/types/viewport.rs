@@ -1,10 +1,11 @@
 use std::sync::atomic::{Ordering, AtomicUsize};
+use compact_str::CompactString;
 
 #[derive(Default, Debug, Clone)]
 pub struct ViewPort {
     id_ : usize,
     pub layers_ : Vec<u32>,
-    pub cameras_ : Vec<usize>,
+    pub cameras_ : Vec<CompactString>,
     pub layer_combine_modes_ : Vec<u32>,
     pub split_screen_positions_ : Vec<f32>
 }

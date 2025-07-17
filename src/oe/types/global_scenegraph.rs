@@ -1,4 +1,4 @@
-use std::sync::{Arc, Weak, Mutex, LazyLock};
+use std::sync::{Arc, Mutex, LazyLock};
 
 use super::object_trait::*;
 use super::world::*;
@@ -6,15 +6,14 @@ use super::scene::*;
 use super::material::*;
 use super::viewport::*;
 use super::polygonstoragetrait::*;
-use super::polygonstorage::*;
 use super::basecontainer::*;
 use super::super::carbon::interpreter::Interpreter;
 use super::elementcontainer::*;
 
-pub type ElementWrapper<T> = ElementContainer<Weak<Mutex<T>>>;
+pub type ElementWrapper<T> = ElementContainer<T>;
 type GlobalVar<T> = LazyLock<Arc<Mutex<T>>>;
 
-#[derive(Default, Clone)]
+#[derive(Debug, Default)]
 pub struct GlobalScenegraph{
     world_     : Option<World>,
     scenes_    : ElementWrapper<Scene>,
@@ -30,7 +29,7 @@ pub struct GlobalScenegraphSimple {
     world_     : Option<World>,
     scenes_    : BaseContainer<Scene>,
     objects_   : BaseContainer<Box<dyn ObjectTrait>>,
-    polygons_  : BaseContainer<RendererPolygonStorage>,
+    polygons_  : BaseContainer<Box<dyn PolygonStorageTrait>>,
     materials_ : BaseContainer<Material>,
     viewports_ : BaseContainer<ViewPort>,
 
@@ -49,12 +48,13 @@ impl GlobalScenegraph{
         // output
         let output = GlobalScenegraphSimple{
             world_ : self.world_.clone(),
-            scenes_ : self.scenes_.get_real(),
-            objects_ : self.objects_.get_real(),
-            polygons_ : self.polygons_.get_real(changed),
-            materials_ : self.materials_.get_real(),
-            viewports_ : self.viewports_.get_real(),
+            scenes_ : self.scenes_.get_changed(changed),
+            objects_ : self.objects_.get_changed(changed),
+            polygons_ : self.polygons_.get_changed(changed),
+            materials_ : self.materials_.get_changed(changed),
+            viewports_ : self.viewports_.get_changed(changed),
         };
+
         // update interpreter
         for inter in self.pending_elements_.drain(..){
             if inter.world.is_some(){

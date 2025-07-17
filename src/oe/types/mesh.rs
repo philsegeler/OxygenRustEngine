@@ -1,4 +1,6 @@
 use std::sync::{Arc, Mutex};
+use compact_str::CompactString;
+
 use super::camera::*;
 use super::light::*;
 
@@ -9,14 +11,14 @@ use super::polygonstoragetrait::*;
 #[derive(Debug, Clone)]
 pub struct Mesh {
     data_ : CommonObjectData,
-    polygon_storage_ : (usize, Arc<Mutex<Box<dyn PolygonStorageTrait>>>),
+    polygon_storage_ : (CompactString, Arc<Mutex<(Box<dyn PolygonStorageTrait>, bool)>>),
 }
 
 impl Mesh {
-    pub fn new_static(positions : Vec<f32>, normals : Vec<f32>, uvmaps : Vec<UVMapData>, indices : Vec<u32>, vgroups : Vec<VertexGroup>) -> Mesh{
+    pub fn new_static(positions : Vec<f32>, normals : Vec<f32>, uvmaps : Vec<UVMapData>, indices : Vec<u32>, vgroups : Vec<VertexGroup>, polygons_name : &str) -> Mesh{
         Mesh{
             data_ : CommonObjectData::new(ObjectType::Mesh),
-            polygon_storage_ : (0, Arc::new(Mutex::new(Box::new(StaticPolygonStorage::new(DynamicPolygonStorage::new(positions, normals, uvmaps, indices, vgroups))))))
+            polygon_storage_ : (polygons_name.into(), Arc::new(Mutex::new((Box::new(StaticPolygonStorage::new(DynamicPolygonStorage::new(positions, normals, uvmaps, indices, vgroups))), true))))
         }
     }
 }

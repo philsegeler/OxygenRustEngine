@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
 
 use super::object_trait::*;
 use super::polygonstorage::RendererPolygonStorage;
@@ -9,9 +9,17 @@ use nohash_hasher::*;
 
 
 // ELEMENT CONTAINER
-#[derive(Default, Clone)]
+#[derive(Clone, Debug)]
 pub struct ElementContainer<T>{
-    data : BaseContainer<(T, bool)>
+    data : BaseContainer<Weak<Mutex<(T, bool)>>>
+}
+
+impl<T> Default for ElementContainer<T> {
+    fn default() -> Self {
+        ElementContainer{
+            data : Default::default(),
+        }
+    }
 }
 
 impl<T> ElementContainer<T>{
@@ -35,16 +43,13 @@ impl<T> ElementContainer<T>{
     pub fn get_id(&self, event_name : &str) -> Option<usize> {
         Some(self.data.get_id(event_name)?)
     }
-    pub fn insert(&mut self, id : usize, element : T, name : &str) -> usize{
-        self.data.insert(id, (element, true), name)
+    pub fn insert(&mut self, id : usize, element : Weak<Mutex<(T, bool)>>, name : &str) -> usize{
+        self.data.insert(id, element, name)
     }
-}
-
-impl<T> ElementContainer<Weak<Mutex<T>>>{
     pub fn cleanup(&mut self){
         let elements : Vec<usize> = self.data.elements().iter().map(|(x, _)| *x).collect();
         for id in elements{
-            let elem = self.data[id].0.upgrade();
+            let elem = self.data[id].upgrade();
             match elem {
                 Some(_) => continue,
                 None => {
@@ -53,62 +58,80 @@ impl<T> ElementContainer<Weak<Mutex<T>>>{
             }
         }
     }
-    pub fn get_strong_elements(&self) -> IntMap<usize, Arc<Mutex<T>>> {
-        self.data.elements().iter().map(|(id, element)| {(*id, element.0.upgrade().unwrap())}).collect()
+    pub fn get_strong_elements(&self) -> IntMap<usize, Arc<Mutex<(T, bool)>>> {
+        self.data.elements().iter().map(|(id, element)| {(*id, element.upgrade().unwrap())}).collect()
     }
 }
 
-impl<T> ElementContainer<Weak<Mutex<T>>> where T : Clone{
-    pub fn get_real_elements(&self) -> IntMap<usize, T> {
-        self.data.elements().iter().map(|(id, element)| {
-            let arced = element.0.upgrade().unwrap();
-            let locked = arced.lock().unwrap();
-            (*id, locked.clone())
-        }).collect()
-    }
+pub trait GetDataElementContainer{
+    type InternalType;
+    fn get_data(&self) -> &BaseContainer<Weak<Mutex<(Self::InternalType, bool)>>>;
+}
 
-    pub fn get_real(&self) -> BaseContainer<T> {
-        BaseContainer::new( self.get_real_elements(), self.data.names().clone())
+impl<T> GetDataElementContainer for ElementContainer<T> {
+    type InternalType=T;
+    fn get_data(&self) -> &BaseContainer<Weak<Mutex<(Self::InternalType, bool)>>>{
+        &self.data
     }
 }
 
-impl ElementContainer<Weak<Mutex<Box<dyn ObjectTrait>>>>{
-    pub fn get_real_elements(&self) -> IntMap<usize, Box<dyn ObjectTrait>> {
-        self.data.elements().iter()
-         .map(|(id, element)| {
-            let arced = element.0.upgrade().unwrap();
-            let locked = arced.lock().unwrap();
-            let output = match locked.get_type(){
-                ObjectType::Camera => Some(Box::new(locked.get_camera().unwrap()) as Box<dyn ObjectTrait>),
-                ObjectType::Light => Some(Box::new(locked.get_light().unwrap()) as Box<dyn ObjectTrait>),
-                ObjectType::Mesh => Some(Box::new(locked.get_mesh().unwrap()) as Box<dyn ObjectTrait>),
-                _ => None
-            };
-            (*id, output.unwrap())
-        }).collect()
-    }
+pub trait ChangedElements : GetDataElementContainer {
+    // functions to implement
+    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::InternalType;
 
-    pub fn get_real(&self) -> BaseContainer<Box<dyn ObjectTrait>> {
-        BaseContainer::new( self.get_real_elements(), self.data.names().clone())
-    }
-}
-
-impl ElementContainer<Weak<Mutex<Box<dyn PolygonStorageTrait>>>>{
-    pub fn get_real_elements(&self, changed : bool) -> IntMap<usize, RendererPolygonStorage> {
-        self.data.elements().iter()
-         .map(|(id, element)| {
-            let arced = element.0.upgrade().unwrap();
+    // derived functions
+    fn get_changed_elements(&self, changed : bool) -> IntMap<usize, Self::InternalType> {
+        self.get_data().elements().iter().filter_map(|(id, element)| {
+            let arced = element.upgrade().unwrap();
             let locked = arced.lock().unwrap();
-            if changed || locked.has_changed() {
-                (*id, RendererPolygonStorage{data : Some(locked.get_data().unwrap().clone())})
+            if changed || locked.1 {
+                Some((*id, self.process(locked)))
             }
             else {
-                (*id, RendererPolygonStorage{data : None})
+                None
             }
         }).collect()
     }
 
-    pub fn get_real(&self, changed : bool) -> BaseContainer<RendererPolygonStorage> {
-        BaseContainer::new( self.get_real_elements(changed), self.data.names().clone())
+    fn get_changed_elements_and_reset(&self, changed : bool) -> IntMap<usize, Self::InternalType> {
+        self.get_data().elements().iter().filter_map(|(id, element)| {
+            let arced = element.upgrade().unwrap();
+            let mut locked = arced.lock().unwrap();
+            if changed || locked.1 {
+                locked.1 = false;
+                Some((*id, self.process(locked)))
+            }
+            else {
+                None
+            }
+        }).collect()
+    }
+
+    fn get_changed(&self, changed : bool) -> BaseContainer<Self::InternalType> {
+        BaseContainer::new( self.get_changed_elements(changed), self.get_data().names().clone())
+    }
+}
+
+impl<T> ChangedElements for ElementContainer<T> where T : Clone{
+    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::InternalType{
+        locked.0.clone()
+    }
+}
+
+impl ChangedElements for ElementContainer<Box<dyn ObjectTrait>> {
+    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::InternalType{
+        let output = match locked.0.get_type(){
+                ObjectType::Camera => Some(Box::new(locked.0.get_camera().unwrap()) as Box<dyn ObjectTrait>),
+                ObjectType::Light => Some(Box::new(locked.0.get_light().unwrap()) as Box<dyn ObjectTrait>),
+                ObjectType::Mesh => Some(Box::new(locked.0.get_mesh().unwrap()) as Box<dyn ObjectTrait>),
+                _ => None
+        };
+        output.unwrap()
+    }
+}
+
+impl ChangedElements for ElementContainer<Box<dyn PolygonStorageTrait>> {
+    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::InternalType{
+        Box::new(RendererPolygonStorage{data : Some(locked.0.get_data().unwrap().clone())}) as Box<dyn PolygonStorageTrait>
     }
 }
