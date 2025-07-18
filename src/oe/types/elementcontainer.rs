@@ -1,9 +1,12 @@
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
+use std::iter::Iterator;
+use std::ops::Index;
 
 use super::object_trait::*;
 use super::polygonstorage::RendererPolygonStorage;
 use super::polygonstoragetrait::*;
 use super::basecontainer::*;
+use compact_str::CompactString;
 //use no_deadlocks::RwLockReadGuard;
 use nohash_hasher::*;
 
@@ -46,6 +49,9 @@ impl<T> ElementContainer<T>{
     pub fn insert(&mut self, id : usize, element : Weak<Mutex<(T, bool)>>, name : &str) -> usize{
         self.data.insert(id, element, name)
     }
+    pub fn insert_str(&mut self, id : usize, element : Weak<Mutex<(T, bool)>>, name : CompactString) -> usize{
+        self.data.insert_str(id, element, name)
+    }
     pub fn cleanup(&mut self){
         let elements : Vec<usize> = self.data.elements().iter().map(|(x, _)| *x).collect();
         for id in elements{
@@ -60,6 +66,31 @@ impl<T> ElementContainer<T>{
     }
     pub fn get_strong_elements(&self) -> IntMap<usize, Arc<Mutex<(T, bool)>>> {
         self.data.elements().iter().map(|(id, element)| {(*id, element.upgrade().unwrap())}).collect()
+    }
+}
+
+impl<T> std::iter::Iterator for &ElementContainer<T>{
+    type Item = (usize, CompactString, Weak<Mutex<(T, bool)>>);
+    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+        let output = self.data.elements().iter().next();
+        match output {
+            Some(x) => Some((*x.0, self.get_name(x.0).unwrap().into(),x.1.clone())),
+            None => None
+        }
+    }
+}
+
+impl<T> Index<usize> for ElementContainer<T> {
+    type Output = Weak<Mutex<(T, bool)>>;
+    fn index(&self, id : usize) -> &Self::Output {
+        &self.data[id]
+    }
+}
+
+impl<T> Index<&str> for ElementContainer<T> {
+    type Output = Weak<Mutex<(T, bool)>>;
+    fn index(&self, name : &str) -> &Self::Output {
+        &self.data[name]
     }
 }
 
@@ -109,6 +140,9 @@ pub trait ChangedElements : GetDataElementContainer {
 
     fn get_changed(&self, changed : bool) -> BaseContainer<Self::InternalType> {
         BaseContainer::new( self.get_changed_elements(changed), self.get_data().names().clone())
+    }
+    fn get_changed_and_reset(&self, changed : bool) -> BaseContainer<Self::InternalType> {
+        BaseContainer::new( self.get_changed_elements_and_reset(changed), self.get_data().names().clone())
     }
 }
 

@@ -48,6 +48,14 @@ impl<T> BaseContainer<T> {
             _ => 0
         }
     }
+    pub fn insert_str(&mut self, id : usize, element : T, name : CompactString) -> usize{
+        self.elements_list_.insert(id, element);
+        let old_id = self.element_names_.insert(id, name);
+        match old_id {
+            Left(l, _) => l,
+            _ => 0
+        }
+    }
     pub fn insert_no_overwrite(&mut self, id : usize, element : T, name : &str) -> bool{
         if !self.contains_name(name){
             self.insert(id, element, name);
@@ -110,5 +118,16 @@ impl<T> Index<&str> for BaseContainer<T> {
     fn index(&self, name : &str) -> &Self::Output {
         let id = self.get_id(name).unwrap();
         &self.elements_list_[&id]
+    }
+}
+
+impl<T> std::iter::Iterator for &BaseContainer<T> where T : Clone{
+    type Item = (usize, CompactString, T);
+    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+        let output = self.elements().iter().next();
+        match output {
+            Some(x) => Some((*x.0, self.get_name(x.0).unwrap().into(),x.1.clone())),
+            None => None
+        }
     }
 }

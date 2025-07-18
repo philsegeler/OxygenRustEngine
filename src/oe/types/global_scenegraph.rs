@@ -11,6 +11,7 @@ use super::super::carbon::interpreter::Interpreter;
 use super::elementcontainer::*;
 
 pub type ElementWrapper<T> = ElementContainer<T>;
+pub type InterpreterElementWrapper<T> = BaseContainer<Arc<Mutex<(T, bool)>>>;
 type GlobalVar<T> = LazyLock<Arc<Mutex<T>>>;
 
 #[derive(Debug, Default)]
@@ -25,6 +26,7 @@ pub struct GlobalScenegraph{
     pending_elements_ : Vec<Interpreter>,
 }
 
+#[derive(Debug, Default)]
 pub struct GlobalScenegraphSimple {
     world_     : Option<World>,
     scenes_    : BaseContainer<Scene>,
@@ -48,11 +50,11 @@ impl GlobalScenegraph{
         // output
         let output = GlobalScenegraphSimple{
             world_ : self.world_.clone(),
-            scenes_ : self.scenes_.get_changed(changed),
-            objects_ : self.objects_.get_changed(changed),
-            polygons_ : self.polygons_.get_changed(changed),
-            materials_ : self.materials_.get_changed(changed),
-            viewports_ : self.viewports_.get_changed(changed),
+            scenes_ : self.scenes_.get_changed_and_reset(changed),
+            objects_ : self.objects_.get_changed_and_reset(changed),
+            polygons_ : self.polygons_.get_changed_and_reset(changed),
+            materials_ : self.materials_.get_changed_and_reset(changed),
+            viewports_ : self.viewports_.get_changed_and_reset(changed),
         };
 
         // update interpreter
@@ -60,8 +62,36 @@ impl GlobalScenegraph{
             if inter.world.is_some(){
                 self.world_ = inter.world;
             }
+            for element in &inter.scenes_{
+                self.scenes_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
+            }
+            for element in &inter.polygons_{
+                self.polygons_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
+            }
+            for element in &inter.objects_{
+                self.objects_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
+            }
+            for element in &inter.materials_{
+                self.materials_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
+            }
+            for element in &inter.viewports_{
+                self.viewports_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
+            }
         }
+
+        // delete unnecessary
+        self.scenes_.cleanup();
+        self.objects_.cleanup();
+        self.polygons_.cleanup();
+        self.materials_.cleanup();
+        self.viewports_.cleanup();
+
         output
+    }
+
+    pub fn add_interpreted(&mut self, new_data : Interpreter){
+        self.pending_elements_.push(new_data);
+
     }
 }
 

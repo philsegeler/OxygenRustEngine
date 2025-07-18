@@ -2,7 +2,7 @@ use light::LightType;
 use compact_str::CompactString;
 use polygonstoragetrait::{UVMapData, VertexGroup};
 use std::sync::{Arc, Mutex};
-use nohash_hasher::IntMap;
+//use nohash_hasher::IntMap;
 
 use super::parser::*;
 use super::super::types::*;
@@ -10,12 +10,12 @@ use super::super::types::global_scenegraph::*;
 
 #[derive(Default, Debug)]
 pub struct Interpreter{
-    pub objects_ : ElementWrapper<Box<dyn object_trait::ObjectTrait>>,
-    pub polygons_ : ElementWrapper<Box<dyn polygonstoragetrait::PolygonStorageTrait>>,
-    pub scenes_  : ElementWrapper<scene::Scene>,
-    pub materials_  : ElementWrapper<material::Material>,
-    pub materials_strong : IntMap<usize, Arc<Mutex<(material::Material, bool)>>>,
-    pub viewports_  : ElementWrapper<viewport::ViewPort>,
+    pub objects_ : InterpreterElementWrapper<Box<dyn object_trait::ObjectTrait>>,
+    pub polygons_ : InterpreterElementWrapper<Box<dyn polygonstoragetrait::PolygonStorageTrait>>,
+    pub scenes_  : InterpreterElementWrapper<scene::Scene>,
+    pub materials_  : InterpreterElementWrapper<material::Material>,
+    //pub materials_strong : IntMap<usize, Arc<Mutex<(material::Material, bool)>>>,
+    pub viewports_  : InterpreterElementWrapper<viewport::ViewPort>,
     pub world : Option<world::World>,
 }
 
@@ -31,7 +31,7 @@ impl Interpreter{
         self.world = Some(self.process_world(&element));
         let after = Instant::now();
         println!("[Performance] Time interpreting: {:?}", (after-before).as_secs_f64());
-        //println!("{:?}", world);
+        //println!("{:?}", self.world);
     }
 
     fn process_world(&mut self, element : &Element) -> world::World{
@@ -101,7 +101,7 @@ impl Interpreter{
         }
 
         let final_output = output.clone();
-        self.scenes_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.scenes_.insert(output_unlocked.0.id(), output.clone(), element.attributes_ref()["name"].get_str().unwrap());
         final_output
     }
 
@@ -129,7 +129,7 @@ impl Interpreter{
         data.visible = visible != 0;
 
         let final_output = output.clone();
-        self.objects_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.objects_.insert(output_unlocked.0.id(), output.clone(), element.attributes_ref()["name"].get_str().unwrap());
         final_output
     }
 
@@ -157,7 +157,7 @@ impl Interpreter{
         data.visible = visible != 0;
 
         let final_output = output.clone();
-        self.objects_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.objects_.insert(output_unlocked.0.id(), output.clone(), element.attributes_ref()["name"].get_str().unwrap());
         final_output
     }
 
@@ -204,7 +204,7 @@ impl Interpreter{
         data.visible = visible != 0;
 
         let final_output = output.clone();
-        self.objects_.insert(output_unlocked.0.id(), Arc::downgrade(&output), name);
+        self.objects_.insert(output_unlocked.0.id(), output.clone(), name);
         final_output
     }
 
@@ -217,7 +217,7 @@ impl Interpreter{
         
         let material_name = element.assignments_ref()["material_id"].get_str().unwrap();
         let material_id = self.materials_.get_id(material_name).unwrap();
-        output.material = Some((material_name.into(), self.materials_strong[&material_id].clone()));
+        output.material = Some((material_name.into(), self.materials_[material_id].clone()));
         
         output
     }
@@ -244,8 +244,7 @@ impl Interpreter{
         output_unlocked.0.specular_hardness = element.assignments_ref()["specular_hardness"].get_float().unwrap() as f32;
 
         let final_output = output.clone();
-        self.materials_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
-        self.materials_strong.insert(output_unlocked.0.id(), final_output.clone());
+        self.materials_.insert(output_unlocked.0.id(), output.clone(), element.attributes_ref()["name"].get_str().unwrap());
         final_output
     }
 
@@ -263,7 +262,7 @@ impl Interpreter{
         }
         
         let final_output = output.clone();
-        self.viewports_.insert(output_unlocked.0.id(), Arc::downgrade(&output), element.attributes_ref()["name"].get_str().unwrap());
+        self.viewports_.insert(output_unlocked.0.id(), output.clone(), element.attributes_ref()["name"].get_str().unwrap());
         final_output
     }
 
@@ -290,6 +289,7 @@ impl Interpreter{
 pub fn interpret(input_str : &str){
     let mut interpreter : Interpreter = Default::default();
     interpreter.interpret(input_str);
+    //println!("{:?}", interpreter);
 }
 
 pub fn interpret_file(filename : &str){
