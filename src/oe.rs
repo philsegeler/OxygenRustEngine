@@ -110,9 +110,9 @@ fn update_events(){
 
         let mut event_handler = OE_EVENT_HANDLER_.write().unwrap();
         event_handler.as_mut().unwrap().update_event_timestamps(&before);
-        let after = time::Instant::now();
+        //let after = time::Instant::now();
 
-        println!("events: {:?}", (after-before).as_nanos()/1000);
+        //println!("events: {:?}", (after-before).as_nanos()/1000);
     }
 }
 fn update_tasks(){

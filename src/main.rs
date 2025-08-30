@@ -76,7 +76,7 @@ fn create_events(_ : &oe::TaskInfo) -> oe::TaskOutput {
 
 fn main() {
 
-    /*oe::init(640, 480, "Some Rust Demo 2");
+    oe::init(640, 480, "Some Rust Demo 2");
     
     oe::set_event_func("keyboard-Space+", |_| {oe::mouse::toggle_lock();vec![]});
     
@@ -92,7 +92,7 @@ fn main() {
     //println!("{}", x);
     let a = EVENTS_LIST.lock().unwrap()[x];
     println!("{:?}", EVENTS_MAP.lock().unwrap()[&(a)]);
-    println!("{:?}", a);*/
+    println!("{:?}", a);
 
     use std::time::Instant;
     use oe::carbon::parser::*;
@@ -107,8 +107,8 @@ fn main() {
     let before = Instant::now();
     //let tokens: Vec<_> = BaseToken::lexer(some_str.as_str()).spanned().collect();
     //let _element = parse_string(&some_str);
-    //interpret_file("OE_VerySimple.csl");
-    interpret_file("OE_Demo_50MB.csl");
+    interpret_file("OE_VerySimple.csl");
+    //interpret_file("OE_Demo_50MB.csl");
     let after = Instant::now();
     /*for token in &tokens {
         println!("{:?}", token.0.as_ref().unwrap());

@@ -1,5 +1,5 @@
 use nohash_hasher::*;
-use bimap::{BiMap, Overwritten::Left};
+use bimap::BiMap;
 use std::ops::Index;
 use std::collections::hash_map::Keys;
 use compact_str::CompactString;
@@ -40,21 +40,15 @@ impl<T> BaseContainer<T> {
     pub fn get_mut(&mut self, id : &usize) -> Option<&mut T> {
         self.elements_list_.get_mut(id)
     }
-    pub fn insert(&mut self, id : usize, element : T, name : &str) -> usize{
-        self.elements_list_.insert(id, element);
-        let old_id = self.element_names_.insert(id, name.into());
-        match old_id {
-            Left(l, _) => l,
-            _ => 0
-        }
+    pub fn insert(&mut self, id : usize, element : T, name : &str) -> Option<T>{
+        let output = self.elements_list_.insert(id, element);
+        let _ = self.element_names_.insert(id, name.into());
+        output
     }
-    pub fn insert_str(&mut self, id : usize, element : T, name : CompactString) -> usize{
-        self.elements_list_.insert(id, element);
-        let old_id = self.element_names_.insert(id, name);
-        match old_id {
-            Left(l, _) => l,
-            _ => 0
-        }
+    pub fn insert_str(&mut self, id : usize, element : T, name : CompactString) -> Option<T>{
+        let output = self.elements_list_.insert(id, element);
+        let _ = self.element_names_.insert(id, name);
+        output
     }
     pub fn insert_no_overwrite(&mut self, id : usize, element : T, name : &str) -> bool{
         if !self.contains_name(name){
@@ -84,15 +78,24 @@ impl<T> BaseContainer<T> {
     pub fn get_name(&self, id : &usize) -> Option<&str> {
         Some(self.element_names_.get_by_left(id)?)
     }
-    pub fn remove(&mut self, id : &usize){
+    pub fn remove(&mut self, id : &usize) -> Option<CompactString>{
         self.elements_list_.remove(id);
-        self.element_names_.remove_by_left(id);
+        match self.element_names_.remove_by_left(id){
+            Some((_, name)) => Some(name),
+            None => None
+        }
+    }
+    pub fn remove_by_name(&mut self, name : &str) -> Option<usize>{
+        
+        let id =self.element_names_.remove_by_right(name)?;
+        self.elements_list_.remove(&id.0);
+        Some(id.0)
     }
     pub fn pop(&mut self, id : usize) -> T{
         self.element_names_.remove_by_left(&id);
         self.elements_list_.remove_entry(&id).unwrap().1
     }
-    pub fn extend(&mut self, mut other : BaseContainer<T>) -> Vec<usize>{
+    pub fn extend(&mut self, mut other : BaseContainer<T>) -> Vec<Option<T>>{
         let mut output = Vec::with_capacity(other.len());
         for (id, name) in other.element_names_.clone(){
             output.push(self.insert(id, other.pop(id), &name));

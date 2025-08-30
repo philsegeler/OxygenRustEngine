@@ -1,4 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
+use compact_str::CompactString;
+
 use crate::oe::math::{self as oe_math, DQuat};
 use super::camera::*;
 use super::mesh::*;
@@ -14,11 +16,10 @@ pub enum ObjectType {
     Custom
 }
 
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct CommonObjectData{
     pub id_ : usize,
-    pub parent : usize,
+    pub parent : CompactString,
     pub visible : bool,
     pub type_ : ObjectType,
     pub pos : [f64; 3],
@@ -50,10 +51,10 @@ pub trait ObjectTrait : Send + std::fmt::Debug{
     fn id(&self) -> usize {
         self.get_data().id_
     }
-    fn get_parent(&self) -> usize {
-        self.get_data().parent
+    fn get_parent(&self) -> &str {
+        &self.get_data().parent
     }
-    fn set_parent(&mut self, parent : usize) {
+    fn set_parent(&mut self, parent : CompactString) {
         self.get_data_mut().parent = parent;
     }
     fn get_visible(&self) -> bool {

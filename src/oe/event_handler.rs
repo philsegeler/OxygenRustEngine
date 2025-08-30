@@ -14,7 +14,7 @@ use super::event::*;
 fn event_default_fn(info: &EventInfo, _ : &Box<dyn EventDataTrait>) -> Vec<usize>{
     let event_name = oe::get_event_name(info.id());
     if event_name != "mouse-motion" {
-        println!("{:?}", event_name);
+        //println!("{:?}", event_name);
     }
     vec![]
 }
@@ -61,20 +61,26 @@ impl<'a> EventHandler<'a> {
     }
 
     pub fn create_user_event(&mut self, event_name : &str) -> usize {
-        let id =Arc::get_mut(&mut self.events_).unwrap().insert(&("user-".to_string() + event_name), Box::new(&event_default_fn), EventEnum::User);
+        let id =Arc::get_mut(&mut self.events_).unwrap().insert_no_overwrite(&("user-".to_string() + event_name), Box::new(&event_default_fn), EventEnum::User);
+        let happened_events_counter = Arc::get_mut(&mut Arc::get_mut(&mut self.events_).unwrap().happened_events_counter_).unwrap();
+        happened_events_counter.insert(id, AtomicU32::new(0));
+        id
+    }
+    pub fn create_load_event(&mut self, event_name : &str) -> usize {
+        let id =Arc::get_mut(&mut self.events_).unwrap().insert_no_overwrite(&("loaded-".to_string() + event_name), Box::new(&event_default_fn), EventEnum::User);
         let happened_events_counter = Arc::get_mut(&mut Arc::get_mut(&mut self.events_).unwrap().happened_events_counter_).unwrap();
         happened_events_counter.insert(id, AtomicU32::new(0));
         id
     }
 
     pub fn create_keyboard_event(&mut self, event_name : &str) -> usize {
-        let id =Arc::get_mut(&mut self.events_).unwrap().insert(&("keyboard-".to_string() + event_name), Box::new(&event_default_fn), EventEnum::Keyboard);
+        let id =Arc::get_mut(&mut self.events_).unwrap().insert_no_overwrite(&("keyboard-".to_string() + event_name), Box::new(&event_default_fn), EventEnum::Keyboard);
         let happened_events_counter = Arc::get_mut(&mut Arc::get_mut(&mut self.events_).unwrap().happened_events_counter_).unwrap();
         happened_events_counter.insert(id, AtomicU32::new(0));
         id    
     }
     pub fn create_mouse_event(&mut self, event_name : &str) -> usize {
-        let id = Arc::get_mut(&mut self.events_).unwrap().insert(&("mouse-".to_string() + event_name), Box::new(&event_default_fn), EventEnum::Mouse);
+        let id = Arc::get_mut(&mut self.events_).unwrap().insert_no_overwrite(&("mouse-".to_string() + event_name), Box::new(&event_default_fn), EventEnum::Mouse);
         let happened_events_counter = Arc::get_mut(&mut Arc::get_mut(&mut self.events_).unwrap().happened_events_counter_).unwrap();
         happened_events_counter.insert(id, AtomicU32::new(0));
         id

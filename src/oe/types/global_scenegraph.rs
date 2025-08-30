@@ -1,96 +1,105 @@
 use std::sync::{Arc, Mutex, LazyLock};
 
+use compact_str::CompactString;
+use multi_containers::HashMultiMap;
+
 use super::object_trait::*;
 use super::world::*;
 use super::scene::*;
 use super::material::*;
 use super::viewport::*;
-use super::polygonstoragetrait::*;
+//use super::polygonstoragetrait::*;
 use super::basecontainer::*;
 use super::super::carbon::interpreter::Interpreter;
 use super::elementcontainer::*;
+use super::globalscenegraphchanged::*;
+use super::globalscenegraphpending::*;
 
-pub type ElementWrapper<T> = ElementContainer<T>;
-pub type InterpreterElementWrapper<T> = BaseContainer<Arc<Mutex<(T, bool)>>>;
+pub type InterpreterElementWrapper<T> = BaseContainer<Arc<SingleElement<T>>>;
 type GlobalVar<T> = LazyLock<Arc<Mutex<T>>>;
+
 
 #[derive(Debug, Default)]
 pub struct GlobalScenegraph{
     world_     : Option<World>,
-    scenes_    : ElementWrapper<Scene>,
-    objects_   : ElementWrapper<Box<dyn ObjectTrait>>,
-    polygons_  : ElementWrapper<Box<dyn PolygonStorageTrait>>,
-    materials_ : ElementWrapper<Material>,
-    viewports_ : ElementWrapper<ViewPort>,
+    scenes_    : ElementContainer<Scene>,
+    objects_   : ElementContainer<Box<dyn ObjectTrait>>,
+    //polygons_  : ElementContainer<Box<dyn PolygonStorageTrait>>,
+    materials_ : ElementContainer<Material>,
+    viewports_ : ElementContainer<ViewPort>,
 
-    pending_elements_ : Vec<Interpreter>,
+    object2viewport      : HashMultiMap<CompactString, CompactString>,
+    object2scene         : HashMultiMap<CompactString, CompactString>,
+    object2object        : HashMultiMap<CompactString, CompactString>,
+    material2scene       : HashMultiMap<CompactString, CompactString>,
+    material2vertexgroup : HashMultiMap<CompactString, VertexGroupMeshKey>,
+
+    pending_elements      : GlobalScenegraphPending,
+    pending_interpreters_ : Vec<(Interpreter, CompactString)>,
 }
-
-#[derive(Debug, Default)]
-pub struct GlobalScenegraphSimple {
-    world_     : Option<World>,
-    scenes_    : BaseContainer<Scene>,
-    objects_   : BaseContainer<Box<dyn ObjectTrait>>,
-    polygons_  : BaseContainer<Box<dyn PolygonStorageTrait>>,
-    materials_ : BaseContainer<Material>,
-    viewports_ : BaseContainer<ViewPort>,
-
-}
-
 
 impl GlobalScenegraph{
-    pub fn update(&mut self, changed : bool) -> GlobalScenegraphSimple {
+    pub fn update(&mut self, changed : bool) -> (GlobalScenegraphChanged, Vec<CompactString>) {
         // delete unnecessary
-        self.scenes_.cleanup();
+        /*self.scenes_.cleanup();
         self.objects_.cleanup();
-        self.polygons_.cleanup();
+        //self.polygons_.cleanup();
         self.materials_.cleanup();
-        self.viewports_.cleanup();
+        self.viewports_.cleanup();*/
 
+        // THIS is the only place where deleting takes place
         // output
-        let output = GlobalScenegraphSimple{
+        let output = GlobalScenegraphChanged{
             world_ : self.world_.clone(),
             scenes_ : self.scenes_.get_changed_and_reset(changed),
             objects_ : self.objects_.get_changed_and_reset(changed),
-            polygons_ : self.polygons_.get_changed_and_reset(changed),
+            //polygons_ : self.polygons_.get_changed_and_reset(changed),
             materials_ : self.materials_.get_changed_and_reset(changed),
             viewports_ : self.viewports_.get_changed_and_reset(changed),
         };
 
+        // NEW FRAME STARTS HERE
+
         // update interpreter
-        for inter in self.pending_elements_.drain(..){
+        let mut events = vec![];
+        /*for (inter, event) in self.pending_interpreters_.drain(..){
             if inter.world.is_some(){
                 self.world_ = inter.world;
             }
             for element in &inter.scenes_{
-                self.scenes_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
+                self.scenes_.insert_str(element.0, element.2, element.1);
             }
-            for element in &inter.polygons_{
-                self.polygons_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
-            }
+            /*for element in &inter.polygons_{
+                self.polygons_.insert_str(element.0, element.2, element.1);
+            }*/
             for element in &inter.objects_{
-                self.objects_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
+                self.objects_.insert_str(element.0, element.2, element.1);
             }
             for element in &inter.materials_{
-                self.materials_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
+                self.materials_.insert_str(element.0, element.2, element.1);
             }
             for element in &inter.viewports_{
-                self.viewports_.insert_str(element.0, Arc::downgrade(&element.2), element.1);
+                self.viewports_.insert_str(element.0, element.2, element.1);
             }
-        }
+            events.push(event);
+        }*/
 
         // delete unnecessary
-        self.scenes_.cleanup();
+        /*self.scenes_.cleanup();
         self.objects_.cleanup();
-        self.polygons_.cleanup();
+        //self.polygons_.cleanup();
         self.materials_.cleanup();
         self.viewports_.cleanup();
-
-        output
+        */
+        (output, events)
     }
 
-    pub fn add_interpreted(&mut self, new_data : Interpreter){
-        self.pending_elements_.push(new_data);
+    fn new_object(&mut self, name : &str, scene_name : &str, obj: Arc<SingleElement<Box<dyn ObjectTrait>>>) {
+
+    }
+
+    pub fn add_interpreted(&mut self, new_data : Interpreter, event : CompactString){
+        self.pending_interpreters_.push((new_data, event));
 
     }
 }

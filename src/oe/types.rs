@@ -1,5 +1,7 @@
 pub mod object_trait;
 pub mod global_scenegraph;
+pub mod globalscenegraphchanged;
+pub mod globalscenegraphpending;
 pub mod world;
 pub mod scene;
 pub mod mesh;

@@ -1,15 +1,15 @@
-use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
+//use std::sync::{Arc, Mutex};
+use std::collections::HashSet;
 use compact_str::CompactString;
 
-use super::scene::*;
-use super::viewport::*;
+//use super::scene::*;
+//use super::viewport::*;
 
 #[derive(Default, Debug, Clone)]
 pub struct World{
-    pub scenes : HashMap<CompactString, Arc<Mutex<(Scene, bool)>>>,
-    pub viewports : HashMap<CompactString, Arc<Mutex<(ViewPort, bool)>>>,
+    pub scenes : HashSet<CompactString>,
+    pub viewports : HashSet<CompactString>,
 
-    pub loaded_scene : usize,
-    pub loaded_viewport : usize,
+    pub loaded_scene : CompactString,
+    pub loaded_viewport : CompactString,
 }

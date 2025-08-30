@@ -1,15 +1,16 @@
-use std::sync::{Arc, Mutex, atomic::{Ordering, AtomicUsize}};
+use std::sync::atomic::{Ordering, AtomicUsize};
 use compact_str::CompactString;
 //use nohash_hasher::*;
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 
-use super::object_trait::*;
+//use super::object_trait::*;
 
 #[derive(Default, Clone, Debug)]
 pub struct Scene{
     id_ : usize,
-    pub objects : HashMap<CompactString, Arc<Mutex<(Box<dyn ObjectTrait>, bool)>>>,
+    pub objects : HashSet<CompactString>,//HashMap<CompactString, Arc<Mutex<(Box<dyn ObjectTrait>, bool)>>>,
+    pub materials : HashSet<CompactString>
 }
 
 pub struct SceneRenderData{

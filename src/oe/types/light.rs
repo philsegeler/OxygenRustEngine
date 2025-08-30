@@ -24,7 +24,7 @@ impl From<i32> for LightType {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Light {
     data_ : CommonObjectData,
     type_ : LightType,

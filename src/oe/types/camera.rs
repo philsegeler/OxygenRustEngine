@@ -2,7 +2,7 @@ use super::object_trait::*;
 use super::light::*;
 use super::mesh::*;
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Camera {
     data_ : CommonObjectData,
     aspect_ratio : f32,

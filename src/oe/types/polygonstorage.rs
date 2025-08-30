@@ -8,7 +8,8 @@ use nohash_hasher::{IntMap, IntSet};
 // RendererPolygonStorage
 #[derive(Default, Clone, Debug)]
 pub struct RendererPolygonStorage{
-    pub data : Option<PolygonStorageData>
+    pub data : Option<PolygonStorageData>,
+    pub ps_type : PolygonStorageType,
 }
 
 impl PolygonStorageTrait for RendererPolygonStorage {

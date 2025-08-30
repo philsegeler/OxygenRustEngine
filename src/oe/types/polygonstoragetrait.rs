@@ -1,7 +1,7 @@
 //use std::sync::{Arc, Mutex};
 use std::sync::atomic::{Ordering, AtomicUsize};
-use std::sync::{Arc, Mutex};
-use super::material::Material;
+//use std::sync::{Arc, Mutex};
+//use super::material::Material;
 use compact_str::CompactString;
 use nohash_hasher::IntMap;
 use std::ops::Index;
@@ -26,7 +26,7 @@ pub struct UVMapData{
 pub struct VertexGroup{
     pub name : CompactString,
     pub polygons : Vec<u32>,
-    pub material : Option<(CompactString, Arc<Mutex<(Material, bool)>>)>
+    pub material : Option<CompactString>
 }
 
 // polygon vertex key
