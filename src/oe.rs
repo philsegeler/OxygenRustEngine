@@ -12,6 +12,7 @@ pub mod types;
 pub mod math;
 pub mod carbon;
 
+//use compact_str::CompactString;
 use dummy_structs::*;
 use task::TaskDataTrait;
 //use task_manager::*;
@@ -32,6 +33,10 @@ use std::time;
 use std::thread;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
+
+//use types::globalscenegraphchanged::GlobalScenegraphChanged;
+
+use crate::oe::carbon::interpreter::interpret_file;
 
 /// basic initialisation
 pub fn init(x: u32, y: u32, title: &str) -> bool {
@@ -71,7 +76,9 @@ pub fn init(x: u32, y: u32, title: &str) -> bool {
                 start_cond.update();
                 update_tasks();
                 end_cond.update();
+                update_scenegraph();
                 update_events();
+                //TODO: UPDATE RENDERER DATA
                 count += 1;
                
             }
@@ -84,6 +91,13 @@ pub fn init(x: u32, y: u32, title: &str) -> bool {
     true
 }
 
+fn update_scenegraph(){
+    let mut scenegraph = OE_SCENEGRAPH_.lock().unwrap();
+    let (_changed_elems , events)= scenegraph.update(false);
+    for event in &events{
+        broadcast_event_by_id(*event);
+    }
+}
 fn update_events(){
 
     let before;
@@ -160,11 +174,6 @@ pub extern "C" fn step() -> bool {
     else {
         OE_START_CONDITION_.update();
     }
-
-    /*let winsys;
-    unsafe {
-        winsys = OE_WINSYS_.borrow_mut().unwrap();
-    }*/
     // renderer update
     
     let output;
@@ -176,7 +185,17 @@ pub extern "C" fn step() -> bool {
     }
 
     //pending renderer data
-    //pending interpreter data
+    let mut unsync_threads = OE_UNSYNC_THREADS_.lock().unwrap();
+    for mut thread in std::mem::take(&mut *unsync_threads){
+        thread.1 = thread.0.is_finished();
+        if thread.1 {
+            thread.0.join().unwrap();
+        }
+        else{
+            unsync_threads.push(thread);
+        }
+    }
+    drop(unsync_threads);
 
     OE_WINSYS_.with_borrow_mut(|winsys|winsys.update_events_single_thread());
 
@@ -184,6 +203,7 @@ pub extern "C" fn step() -> bool {
         OE_END_CONDITION_.update();
     }
     else {
+        update_scenegraph();
         update_events();
     }
     let done = OE_WINSYS_.with_borrow(|winsys|winsys.is_done());
@@ -359,7 +379,7 @@ pub fn set_event_func_by_id(event_id : &usize, func : impl EventFuncTraitWithout
 pub fn set_event_func(event_name : &str, func : impl EventFuncTraitWithoutArgs + 'static) -> bool {
     let mut event_handler = OE_EVENT_HANDLER_.write().unwrap();
     let event_id = event_handler.as_ref().unwrap().get_event_id(event_name).unwrap();
-    let output = event_handler.as_mut().unwrap().set_event_func(&event_id, move |info, _|{func(info)}, Box::new(0)).unwrap_or(false);
+    let output = event_handler.as_mut().unwrap().set_event_func(&event_id, move |info: &event::EventInfo, _|{func(info)}, Box::new(0)).unwrap_or(false);
     output
 }
 
@@ -468,4 +488,38 @@ pub mod mouse{
             lock()
         }*/
     }
+}
+
+/// scenegraph load elements with associated event
+pub fn load_world_func(filename : &str, func : impl EventFuncTraitWithoutArgs + 'static) -> bool{
+    let filename_owned = filename.to_owned();
+    let mut event_handler = OE_EVENT_HANDLER_.write().unwrap();
+    let event_id = event_handler.as_mut().unwrap().create_load_event(filename);
+    let output = event_handler.as_mut().unwrap().set_event_func(&event_id, move |info: &event::EventInfo, _|{func(info)}, Box::new(0)).unwrap_or(false);
+    drop(event_handler);
+    let handle = thread::spawn(move ||{
+            let new_data = interpret_file(&filename_owned);
+            let mut scenegraph = OE_SCENEGRAPH_.lock().unwrap();
+            scenegraph.add_interpreted(new_data, event_id);
+            println!("[UNSYNC THREAD] Loaded world from \"{:?}\"", filename_owned);
+    });
+    let mut threadhandles = OE_UNSYNC_THREADS_.lock().unwrap();
+    threadhandles.push((handle, false));
+    output
+}
+pub fn load_world_func_data(filename : &str, func : impl EventFuncTrait + 'static, data : Box<dyn EventDataTrait>) -> bool{
+    let filename_owned = filename.to_owned();
+    let mut event_handler = OE_EVENT_HANDLER_.write().unwrap();
+    let event_id = event_handler.as_mut().unwrap().create_load_event(filename);
+    let output = event_handler.as_mut().unwrap().set_event_func(&event_id, func, data).unwrap_or(false);
+    drop(event_handler);
+    let handle = thread::spawn(move ||{
+            let new_data = interpret_file(&filename_owned);
+            let mut scenegraph = OE_SCENEGRAPH_.lock().unwrap();
+            scenegraph.add_interpreted(new_data, event_id);
+            println!("[UNSYNC THREAD] Loaded world from \"{:?}\"", filename_owned);
+    });
+    let mut threadhandles = OE_UNSYNC_THREADS_.lock().unwrap();
+    threadhandles.push((handle, false));
+    output
 }

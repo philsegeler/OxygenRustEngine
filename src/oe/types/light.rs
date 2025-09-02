@@ -51,6 +51,7 @@ impl ObjectTrait for Light {
     fn get_camera(&self) -> Option<Camera> {None}
     fn get_light(&self) -> Option<Light> {Some(self.clone())}
     fn get_mesh(&self) -> Option<Mesh> {None}
+    fn get_mesh_mut(&mut self) -> Option<&mut Mesh> {None}
     fn get_data(&self) -> &CommonObjectData {
         &self.data_
     }

@@ -18,8 +18,8 @@ type PendingElements<T> = BaseContainer<Arc<SingleElement<T>>>;
 // VERTEX GROUP MESH KEY
 #[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct VertexGroupMeshKey{
-    vgroup : CompactString,
-    mesh : CompactString,
+    pub vgroup : CompactString,
+    pub mesh : CompactString,
 }
 
 impl From<(CompactString, CompactString)> for VertexGroupMeshKey{

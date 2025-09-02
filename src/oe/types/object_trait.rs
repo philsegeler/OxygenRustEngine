@@ -1,4 +1,5 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::collections::HashSet;
 use compact_str::CompactString;
 
 use crate::oe::math::{self as oe_math, DQuat};
@@ -46,7 +47,9 @@ pub trait ObjectTrait : Send + std::fmt::Debug{
     fn get_camera(&self) -> Option<Camera>;
     fn get_light(&self) -> Option<Light>;
     fn get_mesh(&self) -> Option<Mesh>;
-
+    fn get_mesh_mut(&mut self) -> Option<&mut Mesh>;
+    fn get_linked_objects(&self) -> HashSet<CompactString>{ Default::default()}
+    
     // trait functions with default automatic implementations
     fn id(&self) -> usize {
         self.get_data().id_

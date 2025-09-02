@@ -87,6 +87,9 @@ fn main() {
     oe::add_task_func(&0,"add everything", &create_events, oe::TaskEnum::Once, None);
     oe::repeat_timed_event_by_id(&event_id, 5.0);
     oe::add_task_func(&0, "test_task", &task_test_fn, oe::TaskEnum::Repeat, Some(2.0));
+    oe::load_world_func("OE_VerySimple.csl", &run_event);
+    oe::load_world_func("OE_Demo_50MB.csl", &run_event);
+
     oe::start();
     let x = rand::random::<usize>() % (TOTAL_EVENTS-1 as usize);
     //println!("{}", x);
@@ -94,29 +97,6 @@ fn main() {
     println!("{:?}", EVENTS_MAP.lock().unwrap()[&(a)]);
     println!("{:?}", a);
 
-    use std::time::Instant;
-    use oe::carbon::parser::*;
-    use oe::carbon::lexer::*;
-    use oe::carbon::interpreter::*;
-    //let some_str : String = "<Mesh name=\"car 3456 2390476(*^&%*&65\", specular=0.874, id=49, ah=-8 />".to_string();
-
-    //let some_str = fs::read_to_string("OE_Demo_50MB.csl").unwrap();
-    //let some_str = fs::read_to_string("OE_VerySimple.csl").unwrap();
-    //println!("{}", some_str);
-
-    let before = Instant::now();
-    //let tokens: Vec<_> = BaseToken::lexer(some_str.as_str()).spanned().collect();
-    //let _element = parse_string(&some_str);
-    interpret_file("OE_VerySimple.csl");
-    //interpret_file("OE_Demo_50MB.csl");
-    let after = Instant::now();
-    /*for token in &tokens {
-        println!("{:?}", token.0.as_ref().unwrap());
-    }*/
-    //println!("{}", element.print_oneself());
-
-    use std::borrow::Cow;
     use std::mem::size_of;
-    println!("{:?} {:?} {:?} {:?}", size_of::<ElementEnum>(), size_of::<TokenContent>(), size_of::<Cow<'_, str>>(), size_of::<TriangleElement>());
-    println!(" Total time: {:?}", (after-before).as_secs_f64());
+    println!("{:?} {:?} {:?}", size_of::<Box<[u32]>>(), size_of::<i64>(), size_of::<u64>());
 }

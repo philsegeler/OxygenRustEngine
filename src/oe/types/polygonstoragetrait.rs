@@ -124,6 +124,7 @@ impl PolygonStorageData{
 pub trait PolygonStorageTrait : Send + std::fmt::Debug{
     // functions to implement
     fn get_data(&self) -> Option<&PolygonStorageData>;
+    fn get_data_mut(&mut self) -> Option<&mut PolygonStorageData>;
     fn get_type(&self) -> PolygonStorageType;
     fn regenerate_data(&mut self);
 
@@ -139,6 +140,9 @@ pub trait PolygonStorageTrait : Send + std::fmt::Debug{
 
     fn get_vgroups(&self) -> &Vec<VertexGroup>{
         &self.get_data().unwrap().vgroups
+    }
+    fn get_vgroups_mut(&mut self) -> &mut Vec<VertexGroup>{
+        &mut self.get_data_mut().unwrap().vgroups
     }
     fn get_num_uvs(&self) -> u8{
         self.get_data().unwrap().num_of_uvs

@@ -3,11 +3,11 @@ use bimap::BiMap;
 use std::ops::Index;
 use std::collections::hash_map::Keys;
 use compact_str::CompactString;
-
+use debug_ignore::DebugIgnore;
 
 #[derive(Debug, Clone)]
 pub struct BaseContainer<T> {
-    elements_list_ : IntMap<usize, T>,
+    elements_list_ : DebugIgnore<IntMap<usize, T>>,
     element_names_ : BiMap<usize, CompactString>,
 }
 
@@ -23,7 +23,7 @@ impl<T> Default for BaseContainer<T> {
 
 impl<T> BaseContainer<T> {
     pub fn new(elements_list_ : IntMap<usize, T>, element_names_ : BiMap<usize, CompactString>) -> BaseContainer<T>{
-        BaseContainer { elements_list_, element_names_}
+        BaseContainer { elements_list_:elements_list_.into(), element_names_}
     }
     pub fn elements(&self) -> &IntMap<usize, T>{
         &self.elements_list_
@@ -78,10 +78,10 @@ impl<T> BaseContainer<T> {
     pub fn get_name(&self, id : &usize) -> Option<&str> {
         Some(self.element_names_.get_by_left(id)?)
     }
-    pub fn remove(&mut self, id : &usize) -> Option<CompactString>{
-        self.elements_list_.remove(id);
+    pub fn remove(&mut self, id : &usize) -> Option<(T, CompactString)>{
+        let elem = self.elements_list_.remove(id);
         match self.element_names_.remove_by_left(id){
-            Some((_, name)) => Some(name),
+            Some((_, name)) => Some((elem.unwrap(), name)),
             None => None
         }
     }
@@ -124,13 +124,35 @@ impl<T> Index<&str> for BaseContainer<T> {
     }
 }
 
-impl<T> std::iter::Iterator for &BaseContainer<T> where T : Clone{
+// Proper iterator
+pub struct BaseContainerIntoIter<T>{
+    data : Vec<(usize, CompactString, T)>,
+    index : usize,
+}
+
+impl<T> Iterator for BaseContainerIntoIter<T> where T : Clone{
     type Item = (usize, CompactString, T);
-    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        let output = self.elements().iter().next();
-        match output {
-            Some(x) => Some((*x.0, self.get_name(x.0).unwrap().into(),x.1.clone())),
-            None => None
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut output = None;
+        if self.index < self.data.len(){
+            output = Some(self.data[self.index].clone());
+        }
+        self.index+=1;
+        output
+    }
+}
+
+impl<T> std::iter::IntoIterator for &BaseContainer<T> where T : Clone{
+    type IntoIter = BaseContainerIntoIter<T>;
+    type Item = (usize, CompactString, T);
+    fn into_iter(self) -> Self::IntoIter {
+        let mut output = vec![];
+        for x in &*(self.elements_list_){
+            output.push((*x.0, CompactString::new(self.get_name(&x.0).unwrap()),x.1.clone()))
+        }
+        BaseContainerIntoIter{
+            data : output,
+            index : 0
         }
     }
 }

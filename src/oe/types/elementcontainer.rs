@@ -34,7 +34,6 @@ impl<T> Default for ElementSnapshot<T> {
 pub struct ElementContainer<T>{
     data : BaseContainer<Arc<SingleElement<T>>>,
     deleted : Vec<CompactString>,
-    pending : BaseContainer<Arc<SingleElement<T>>>
 }
 
 impl<T> Default for ElementContainer<T> {
@@ -42,7 +41,6 @@ impl<T> Default for ElementContainer<T> {
         ElementContainer{
             data : Default::default(),
             deleted : Default::default(),
-            pending : Default::default()
         }
     }
 }
@@ -61,22 +59,11 @@ impl<T> ElementContainer<T>{
         self.data.contains_name(event_name)
     }
 
-    pub fn contains_pending(&self, event_id : &usize) -> bool{
-        self.pending.contains(event_id)
-    }
-    pub fn contains_pending_name(&self, event_name : &str) -> bool{
-        self.pending.contains_name(event_name)
-    }
-
-    pub fn contains_both(&self, event_id : &usize) -> bool{
-        self.contains(event_id) || self.contains_pending(event_id)
-    }
-    pub fn contains_both_name(&self, event_name : &str) -> bool{
-        self.data.contains_name(event_name) || self.pending.contains_name(event_name)
-    }
-
     pub fn get_name(&self, event_id : &usize) -> Option<&str> {
         Some(self.data.get_name(event_id)?)
+    }
+    pub fn names(&self) -> Vec<CompactString>{
+        self.data.names().iter().map(|(_, x)| x.clone()).collect()
     }
 
     pub fn get_id(&self, event_name : &str) -> Option<usize> {
@@ -89,19 +76,12 @@ impl<T> ElementContainer<T>{
         self.data.insert_str(id, element, name)
     }
 
-    pub fn insert_pending(&mut self, id : usize, element : Arc<SingleElement<T>>, name : &str) -> Option<Arc<SingleElement<T>>>{
-        self.pending.insert(id, element, name)
-    }
-    pub fn insert_pending_str(&mut self, id : usize, element : Arc<SingleElement<T>>, name : CompactString) -> Option<Arc<SingleElement<T>>>{
-        self.pending.insert_str(id, element, name)
-    }
-
     pub fn remove(&mut self, id : usize){
         self.deleted.push(self.get_name(&id).unwrap().into());
     }
 
-    pub fn remove_pending_str(&mut self, name : &str){
-        self.pending.remove_by_name(name);
+    pub fn remove_now(&mut self, id : &usize) -> Option<(Arc<SingleElement<T>>, CompactString)>{
+        self.data.remove(id)
     }
 
     pub fn update(&mut self){
@@ -110,12 +90,6 @@ impl<T> ElementContainer<T>{
             self.data.remove_by_name(&name);
         }
 
-        for (id, name, elem) in &self.pending{
-            self.data.insert_str(id, elem.clone(), name);
-        }
-
-        self.pending.clear();
-
     }
 
     pub fn get_strong_elements(&self) -> IntMap<usize, Arc<SingleElement<T>>> {
@@ -123,14 +97,11 @@ impl<T> ElementContainer<T>{
     }
 }
 
-impl<T> std::iter::Iterator for &ElementContainer<T>{
+impl<T> std::iter::IntoIterator for &ElementContainer<T>{
+    type IntoIter = BaseContainerIntoIter<Arc<SingleElement<T>>>;
     type Item = (usize, CompactString, Arc<SingleElement<T>>);
-    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        let output = self.data.elements().iter().next();
-        match output {
-            Some(x) => Some((*x.0, self.get_name(x.0).unwrap().into(),x.1.clone())),
-            None => None
-        }
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.into_iter()
     }
 }
 
@@ -150,17 +121,17 @@ impl<T> Index<&str> for ElementContainer<T> {
 
 pub trait GetDataElementContainer{
     type InternalType;
-    fn get_data(&self) -> &BaseContainer<Arc<Mutex<(Self::InternalType, bool)>>>;
-    fn get_data_mut(&mut self) -> &mut BaseContainer<Arc<Mutex<(Self::InternalType, bool)>>>;
+    fn get_data(&self) -> &BaseContainer<Arc<SingleElement<Self::InternalType>>>;
+    fn get_data_mut(&mut self) -> &mut BaseContainer<Arc<SingleElement<Self::InternalType>>>;
     fn get_deleted(&mut self) -> &mut Vec<CompactString>;
 
 }
 impl<T> GetDataElementContainer for ElementContainer<T> {
     type InternalType=T;
-    fn get_data(&self) -> &BaseContainer<Arc<Mutex<(Self::InternalType, bool)>>>{
+    fn get_data(&self) -> &BaseContainer<Arc<SingleElement<Self::InternalType>>>{
         &self.data
     }
-    fn get_data_mut(&mut self) -> &mut BaseContainer<Arc<Mutex<(Self::InternalType, bool)>>>{
+    fn get_data_mut(&mut self) -> &mut BaseContainer<Arc<SingleElement<Self::InternalType>>>{
         &mut self.data
     }
     fn get_deleted(&mut self) -> &mut Vec<CompactString>{
@@ -207,7 +178,7 @@ pub trait ChangedElements : GetDataElementContainer {
         ElementSnapshot { data, deleted }
     }
     fn get_changed_and_reset(&mut self, changed : bool) -> ElementSnapshot<Self::InternalType> {
-        let deleted = std::mem::take(self.get_deleted());
+        let deleted = self.get_deleted().clone();
         for name in &deleted{
             self.get_data_mut().remove_by_name(name);
         }

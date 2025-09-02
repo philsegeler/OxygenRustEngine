@@ -16,6 +16,11 @@ impl PolygonStorageTrait for RendererPolygonStorage {
     fn get_data(&self) -> Option<&PolygonStorageData> {
         self.data.as_ref()
     }
+
+    fn get_data_mut(&mut self) -> Option<&mut PolygonStorageData> {
+        self.data.as_mut()
+    }
+
     fn get_type(&self) -> PolygonStorageType{
         PolygonStorageType::Static
     }
@@ -44,10 +49,12 @@ impl PolygonStorageTrait for StaticPolygonStorage {
     fn get_data(&self) -> Option<&PolygonStorageData> {
         Some(&self.data)
     }
+    fn get_data_mut(&mut self) -> Option<&mut PolygonStorageData> {
+        Some(&mut self.data)
+    }
     fn get_type(&self) -> PolygonStorageType{
         PolygonStorageType::Static
     }
-    
     // only useful for dynamic meshes
     fn regenerate_data(&mut self) {
         
@@ -102,7 +109,9 @@ impl PolygonStorageTrait for SoftbodyPolygonStorage {
     fn get_type(&self) -> PolygonStorageType{
         PolygonStorageType::SoftBody
     }
-    
+    fn get_data_mut(&mut self) -> Option<&mut PolygonStorageData> {
+        Some(&mut self.data)
+    }
     // only useful for dynamic meshes
     fn regenerate_data(&mut self) {
         let vbo_offset = 6+self.uvmaps.len()*2;
@@ -163,6 +172,14 @@ impl PolygonStorageTrait for DynamicPolygonStorage{
     fn get_data(&self) -> Option<&PolygonStorageData> {
         if self.regenerated_data {
             Some(&self.data)
+        }
+        else {
+            None
+        }
+    }
+    fn get_data_mut(&mut self) -> Option<&mut PolygonStorageData> {
+        if self.regenerated_data {
+            Some(&mut self.data)
         }
         else {
             None

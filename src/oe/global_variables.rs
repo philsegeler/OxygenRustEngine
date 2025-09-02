@@ -28,7 +28,7 @@ thread_local!{
 pub static OE_EVENT_HANDLER_ : LazyLock<UltimateWrapper<EventHandler>> = LazyLock::new(||{new_ultimate_wrapper(None)});
 //pub static OE_TASK_MANAGER_ : LazyLock<UltimateWrapper<TaskManager>> = LazyLock::new(||{new_ultimate_wrapper(None)});
 pub static OE_TASK_MANAGERS_ : LazyLock<TaskManagerList<TaskManager>> = LazyLock::new(||{new_task_manager_list()});
-pub static OE_UNSYNC_THREADS_ : LazyLock<Arc<Mutex<Vec<std::thread::JoinHandle<()>>>>> = LazyLock::new(||{Default::default()});
+pub static OE_UNSYNC_THREADS_ : LazyLock<Arc<Mutex<Vec<(std::thread::JoinHandle<()>, bool)>>>> = LazyLock::new(||{Default::default()});
 
 //pub static OE_RENDERER_   : TraitWrapper<dyn OE_RendererBaseTrait> = Mutex::new(None);
 //pub static OE_PHYSICS_    : TraitWrapper<dyn OE_PhysicsBaseTrait> = Mutex::new(None);

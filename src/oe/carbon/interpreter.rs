@@ -25,6 +25,9 @@ pub struct Interpreter{
 }
 
 impl Interpreter{
+    pub fn get_data(&mut self) -> &mut GlobalScenegraphPending{
+        &mut self.data
+    }
     pub fn interpret(&mut self, input_str: &str){
         use std::time::Instant;
         let before = Instant::now();
@@ -36,7 +39,7 @@ impl Interpreter{
         self.data.world_ = Some(self.process_world(&element));
         let after = Instant::now();
         println!("[Performance] Time interpreting: {:?}", (after-before).as_secs_f64());
-        println!("{:?}", self.data);
+        //println!("{:?}", self.data);
     }
 
     fn process_world(&mut self, element : &Element) -> world::World{
@@ -288,13 +291,14 @@ impl Interpreter{
 
 }
 
-pub fn interpret(input_str : &str){
+pub fn interpret(input_str : &str) -> Interpreter{
     let mut interpreter : Interpreter = Default::default();
     interpreter.interpret(input_str);
     //println!("{:?}", interpreter);
+    interpreter
 }
 
-pub fn interpret_file(filename : &str){
+pub fn interpret_file(filename : &str) -> Interpreter{
     use std::fs;
     use std::time::Instant;
     let before = Instant::now();
@@ -302,5 +306,5 @@ pub fn interpret_file(filename : &str){
     let after = Instant::now();
     println!("[Performance] Time reading from file: {:?} secs", (after-before).as_secs_f64());
 
-    interpret(&input_str);
+    interpret(&input_str)
 }
