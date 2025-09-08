@@ -80,13 +80,12 @@ impl GlobalScenegraph{
         let pending_interpreters = std::mem::take(&mut self.pending_interpreters_);
         for (mut inter, event) in pending_interpreters{
             self.consume_pending_elements(inter.get_data());
-            //println!("{:?}", self);
+            println!("{:?}", self);
             events.push(event);
         }
 
         (output, events)
     }
-
     fn consume_pending_elements(&mut self, data : &mut GlobalScenegraphPending){
         
         // update world -> nuke everything
@@ -128,9 +127,7 @@ impl GlobalScenegraph{
         std::mem::take(data);
     }
 
-
     // HANDLE INDIVIDUAL OBJECTS
-
     fn new_object(&mut self, id : usize, name : CompactString, element: Arc<SingleElement<Box<dyn ObjectTrait>>>, data : &GlobalScenegraphPending) -> Result<u8, String> {
         
         let object_unlocked = element.lock().unwrap();
@@ -151,12 +148,16 @@ impl GlobalScenegraph{
 
         // finally add object
         drop(object_unlocked);
-        if self.object2scene.contains_key(&name){
-            self.objects_.insert_str(id, element, name);
+        if let Some(names) = self.object2scene.get(&name){
+            if self.scenes_.contains_names(names.iter()){
+                self.objects_.insert_str(id, element, name);
+            }
+            else {
+                return Err("Object belongs in non-existent scene.".to_string());
+            }
         }
         Ok(5)
     }
-
     fn remove_object(&mut self, name : &str){
         if let Some(old_id) = self.objects_.get_id(&name){
             self.objects_.remove_now(&old_id);
@@ -180,18 +181,14 @@ impl GlobalScenegraph{
             }
         }
     }
-
     fn new_scene(&mut self, id : usize, name : CompactString, element: Arc<SingleElement<Scene>>, data : &GlobalScenegraphPending) -> Result<u8, String> {
         
         let scene_unlocked = element.lock().unwrap();
-        //println!("2 {:?}\n DATA SCENES {:?}", self, &data.scenes_);
         if let Some(old_id) = self.scenes_.get_id(&name){
-            println!("update start");
             //println!("{:?}", self);
-            let old_scene = self.scenes_.remove_now(&old_id).unwrap();
-            
+            let old_scene = self.scenes_.remove_now(&old_id).unwrap();          
             let old_scene_unlocked = old_scene.0.lock().unwrap();
-            println!("update end");
+
             // handle unlinked objects
             for old_obj_name in old_scene_unlocked.0.objects.difference(&scene_unlocked.0.objects){
                 self.object2scene.remove(old_obj_name, &name);
@@ -207,7 +204,6 @@ impl GlobalScenegraph{
                     self.remove_material(old_obj_name);
                 }
             }
-            
         }
         
         self.check_object_validity(scene_unlocked.0.objects.iter(), data, "Scene")?;
@@ -219,7 +215,6 @@ impl GlobalScenegraph{
 
         Ok(5)
     }
-
     fn remove_scene(&mut self, name : &str){
         if let Some(old_id) = self.scenes_.get_id(&name){
             let scene = self.scenes_.remove_now(&old_id).unwrap();
@@ -239,15 +234,18 @@ impl GlobalScenegraph{
             }
         }
     }
-
     fn new_material(&mut self, id : usize, name : CompactString,  element: Arc<SingleElement<Material>>, _ : &GlobalScenegraphPending) -> Result<u8, String> {
         //TODO : IF VALID LINKS EXIST
-        if self.material2scene.contains_key(&name){
-            self.materials_.insert_str(id, element, name);
+        if let Some(names) = self.material2scene.get(&name){
+            if self.scenes_.contains_names(names.iter()){
+                self.materials_.insert_str(id, element, name);
+            }
+            else {
+                return Err("Material belongs to non-existent scene.".to_string());
+            }
         }
         Ok(5)
     }
-
     fn remove_material(&mut self, name : &str){
         if let Some(old_id) = self.materials_.get_id(&name){
             self.materials_.remove_now(&old_id);
@@ -272,7 +270,6 @@ impl GlobalScenegraph{
             }
        }
     }
-
     fn new_viewport(&mut self, id : usize, name : CompactString, element: Arc<SingleElement<ViewPort>>, data : &GlobalScenegraphPending) -> Result<u8, String> {
         
         let viewport_unlocked = element.lock().unwrap();
@@ -298,16 +295,13 @@ impl GlobalScenegraph{
 
         Ok(5)
     }
-
     fn remove_viewport(&mut self, name : &str){
        if let Some(old_id) = self.viewports_.get_id(&name){
             self.viewports_.remove_now(&old_id);
        }
     }
-
     pub fn add_interpreted(&mut self, new_data : Interpreter, event : usize){
         self.pending_interpreters_.push((new_data, event));
-
     }
 
     /////////////////////////////////////////////////////////

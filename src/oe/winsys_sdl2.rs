@@ -81,7 +81,7 @@ impl<'a> WinsysSdl2<'a>{
             major=2;minor=0;
         }
         else{
-            major=1;minor=0;
+            major=1;minor=4;
         }
         gl_attr.set_accelerated_visual(true);
         gl_attr.set_double_buffer(true);
@@ -187,7 +187,7 @@ impl WinsysBaseTrait for WinsysSdl2<'_>{
         output.done 
     }
 
-    fn update_window(&self, update_info : WinsysUpdateInfo) -> WinsysOutput {
+    fn update_window(&mut self, update_info : WinsysUpdateInfo) -> WinsysOutput {
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT);
         }
@@ -198,7 +198,15 @@ impl WinsysBaseTrait for WinsysSdl2<'_>{
             self.sdl_ctx.mouse().set_relative_mouse_mode(update_info.mouse_locked);
             data.update_info.mouse_locked = update_info.mouse_locked;
         }
-        data.update_info = update_info;
+        if data.update_info.title != update_info.title{
+            self.window_.set_title(&update_info.title).unwrap();
+        }
+        if ! data.update_info.res_changed{
+            data.update_info.res_x = update_info.res_x;
+            data.update_info.res_y = update_info.res_y;
+        }
+        //data.update_info = update_info;
+        data.update_info.res_changed = false;
         data.clone()
     }
 }
@@ -273,6 +281,7 @@ impl WinsysEventPumpSdl2<'_>{
                         let mut data = self.data_.lock().unwrap();
                         data.update_info.res_x = u32::try_from(resize_dims[0]).unwrap();
                         data.update_info.res_y = u32::try_from(resize_dims[1]).unwrap();
+                        data.update_info.res_changed = true;
                         unsafe {
                             gl::BindFramebuffer(gl::DRAW_BUFFER, 0);
                             gl::Viewport(0, 0, resize_dims[0], resize_dims[1]);

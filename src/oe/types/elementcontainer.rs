@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::iter::Iterator;
 use std::ops::Index;
+//use std::iter::Iterator;
 
 use super::object_trait::*;
 use super::polygonstorage::RendererPolygonStorage;
@@ -57,6 +58,9 @@ impl<T> ElementContainer<T>{
     }
     pub fn contains_name(&self, event_name : &str) -> bool{
         self.data.contains_name(event_name)
+    }
+    pub fn contains_names<'a>(&self, names : impl Iterator<Item=&'a CompactString>) -> bool{
+        self.data.contains_names(names)
     }
 
     pub fn get_name(&self, event_id : &usize) -> Option<&str> {

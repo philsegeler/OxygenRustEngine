@@ -72,6 +72,13 @@ impl<T> BaseContainer<T> {
     pub fn contains_name(&self, name : &str) -> bool{
         self.element_names_.contains_right(name)
     }
+    pub fn contains_names<'a>(&self, names : impl Iterator<Item=&'a CompactString>) -> bool{
+        let mut output = true;
+        for name in names{
+            output = output && self.contains_name(name);
+        }
+        output
+    }
     pub fn get_id(&self, name : &str) -> Option<usize> {
         Some(*self.element_names_.get_by_right(name)?)
     }

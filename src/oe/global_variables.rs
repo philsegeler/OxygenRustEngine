@@ -1,6 +1,9 @@
 
 use core::cell::RefCell;
 use std::sync::{Arc, Mutex, atomic::AtomicBool, LazyLock};
+use std::thread;
+use std::sync::RwLock;
+
 use super::types::global_scenegraph::GlobalScenegraph;
 
 //use no_deadlocks::Mutex;
@@ -8,10 +11,21 @@ use super::base_traits::*;
 use super::task_manager::*;
 use super::dummy_structs::*;
 use super::event_handler::*;
-use std::thread;
-//use super::types::global_scenegraph::*;
-//trait OE_RendererBaseTrait : Send{}
-//struct oe_renderer_init_info_t {x : i32}
+
+
+pub type TaskManagerWrapper<T> = Arc<RwLock<T>>;
+pub type TaskManagerList<T> = Arc<Mutex<Vec<TaskManagerWrapper<T>>>>;
+
+pub type TraitWrapper<T> = Mutex<Option<Box<T>>>;
+
+pub fn new_ultimate_wrapper<T>(arg : Option<T>) -> UltimateWrapper<T> {
+    //Arc::new(ReentrantMutex::new(RefCell::new(arg)))
+    Arc::new(RwLock::new(arg))
+}
+
+pub fn new_task_manager_list<T>() -> TaskManagerList<T> {
+    Arc::new(Mutex::new(vec![]))
+}
 
 // STATIC VARIABLES
 pub static OE_SCENEGRAPH_ : LazyLock<Arc<Mutex<GlobalScenegraph>>> = LazyLock::new(||{Arc::new(Mutex::new(Default::default()))});
@@ -30,7 +44,7 @@ pub static OE_EVENT_HANDLER_ : LazyLock<UltimateWrapper<EventHandler>> = LazyLoc
 pub static OE_TASK_MANAGERS_ : LazyLock<TaskManagerList<TaskManager>> = LazyLock::new(||{new_task_manager_list()});
 pub static OE_UNSYNC_THREADS_ : LazyLock<Arc<Mutex<Vec<(std::thread::JoinHandle<()>, bool)>>>> = LazyLock::new(||{Default::default()});
 
-//pub static OE_RENDERER_   : TraitWrapper<dyn OE_RendererBaseTrait> = Mutex::new(None);
+pub static OE_RENDERER_   : TraitWrapper<dyn RendererBaseTrait> = Mutex::new(None);
 //pub static OE_PHYSICS_    : TraitWrapper<dyn OE_PhysicsBaseTrait> = Mutex::new(None);
 //pub static OE_NETWORKING_ : TraitWrapper<dyn OE_NetworkingBaseTrait> = Mutex::new(None);
 
@@ -40,6 +54,7 @@ pub static OE_WINSYS_INIT_INFO_   : LazyLock<Mutex<Option<WinsysInitInfo>>> = La
 pub static OE_WINSYS_UPDATE_INFO_ : LazyLock<Mutex<Option<WinsysUpdateInfo>>> =LazyLock::new(||{Mutex::new(None)}); 
 pub static OE_WINSYS_OUTPUT_INFO_ : LazyLock<Mutex<Option<WinsysOutput>>> = LazyLock::new(||{Mutex::new(None)});          
 
+pub static OE_RENDERER_UPDATE_INFO_ : LazyLock<Mutex<Option<RendererUpdateInfo>>> =LazyLock::new(||{Mutex::new(None)}); 
 //pub static OE_RENDERER_INIT_INFO_ : Mutex<Option<oe_renderer_init_info_t>> = Mutex::new(None);
 //pub static OE_RENDERER_UPDATE_INFO_: Mutex<Option<oe_renderer_update_info_t>> = Mutex::new(None);
 

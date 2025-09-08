@@ -12,19 +12,6 @@ use std::sync::RwLock;
 //pub type UltimateWrapper<T> = Arc<ReentrantMutex<RefCell<Option<T>>>>;
 pub type UltimateWrapper<T> = Arc<RwLock<Option<T>>>;
 //pub type TaskManagerWrapper<T> = Arc<ReentrantMutex<RefCell<T>>>;
-pub type TaskManagerWrapper<T> = Arc<RwLock<T>>;
-pub type TaskManagerList<T> = Arc<Mutex<Vec<TaskManagerWrapper<T>>>>;
-
-pub type TraitWrapper<T> = Mutex<Option<Box<T>>>;
-
-pub fn new_ultimate_wrapper<T>(arg : Option<T>) -> UltimateWrapper<T> {
-    //Arc::new(ReentrantMutex::new(RefCell::new(arg)))
-    Arc::new(RwLock::new(arg))
-}
-
-pub fn new_task_manager_list<T>() -> TaskManagerList<T> {
-    Arc::new(Mutex::new(vec![]))
-}
 
 pub struct MutexCondition{
     value : Mutex<i8>,
@@ -67,7 +54,7 @@ impl MutexCondition{
 }
 
 
-#[derive(Default, PartialEq, Clone, Copy)]
+#[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub enum WinsysBackend {
     #[default]
     Angle,
@@ -81,11 +68,13 @@ pub struct WinsysInitInfo{
     pub requested_backend : WinsysBackend,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WinsysUpdateInfo{
     pub title: String,
     pub res_x: u32,
     pub res_y: u32,
+    
+    pub res_changed : bool,
 
     pub use_fullscreen : bool,
 
@@ -97,13 +86,14 @@ impl Default for WinsysUpdateInfo {
     fn default() -> Self {WinsysUpdateInfo{ title: "".to_string(), 
                             res_x:0, 
                             res_y:0, 
+                            res_changed : false,
                             use_fullscreen:false,
                             vsync:true,
                             mouse_locked:false,  
                         }}
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct WinsysOutput{
     pub update_info : WinsysUpdateInfo,
 
@@ -114,4 +104,23 @@ pub struct WinsysOutput{
     pub backend : WinsysBackend,
     pub mouse_moved : bool,
     pub done        : bool,
+}
+
+#[derive(Clone, Debug, Copy, Default)]
+pub enum RendererShadingMode{
+    #[default]
+    Regular,
+    Normals
+}
+
+#[derive(Clone, Debug, Copy, Default)]
+pub struct RendererUpdateInfo{
+    pub use_hdr : bool,
+    pub use_wireframe : bool,
+    pub use_light_indexed_rendering : bool,
+    pub render_bounding_boxes : bool,
+    pub render_bounding_spheres : bool,
+    pub use_z_prepass : bool,
+    pub restart_renderer : bool,
+    pub shading_mode : RendererShadingMode,
 }
