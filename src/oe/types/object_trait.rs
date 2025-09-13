@@ -7,6 +7,20 @@ use super::camera::*;
 use super::mesh::*;
 use super::light::*;
 
+#[derive(Clone, Debug)]
+pub enum ChangedObjectEnum{
+    Camera(Camera),
+    Light(Light),
+    Mesh(Mesh),
+    None(bool),
+}
+
+impl Default for ChangedObjectEnum{
+    fn default() -> Self {
+        ChangedObjectEnum::None(true)
+    }
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum ObjectType {
@@ -27,7 +41,7 @@ pub struct CommonObjectData{
     pub rot : [f64; 4],
     pub sca : [f64; 3],
     pub radius : f64,
-    pub bbox_dims : [f64; 2]
+    pub bbox_dims : [f64; 3]
 }
 
 impl CommonObjectData {
@@ -49,7 +63,7 @@ pub trait ObjectTrait : Send + std::fmt::Debug{
     fn get_mesh(&self) -> Option<Mesh>;
     fn get_mesh_mut(&mut self) -> Option<&mut Mesh>;
     fn get_linked_objects(&self) -> HashSet<CompactString>{ Default::default()}
-    
+    fn update(&mut self);
     // trait functions with default automatic implementations
     fn id(&self) -> usize {
         self.get_data().id_
@@ -102,7 +116,7 @@ pub trait ObjectTrait : Send + std::fmt::Debug{
         view_mat = rot_mat * oe_math::translate(view_mat,translation_vec);
         view_mat
     }
-    fn get_bbox_dimensions(&self) -> [f64; 2]{
+    fn get_bbox_dimensions(&self) -> [f64; 3]{
         let data = self.get_data();
         data.bbox_dims
     }

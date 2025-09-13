@@ -23,4 +23,15 @@ impl Material{
     pub fn id(&self) -> usize{
         self.id_
     }
+    pub fn get_renderer_data(&self) -> Vec<f32>{
+        let mut output = Vec::with_capacity(12);
+        output.extend_from_slice(&self.dif_);
+        output.extend_from_slice(&self.scol);
+        output.push(self.alpha);
+        output.push(self.specular_intensity);
+        output.push(self.specular_hardness);
+        output.push(self.translucency);
+        output.push(self.illuminosity);
+        output
+    }
 }

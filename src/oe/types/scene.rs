@@ -13,11 +13,6 @@ pub struct Scene{
     pub materials : HashSet<CompactString>
 }
 
-pub struct SceneRenderData{
-    objects_ : Vec<usize>,
-    materials_ : Vec<usize>,
-}
-
 impl Scene{
     pub fn new() -> Scene{
         static ID_COUNT : AtomicUsize = AtomicUsize::new(1);

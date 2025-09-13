@@ -42,12 +42,18 @@ pub struct GlobalScenegraph{
 }
 
 impl GlobalScenegraph{
+    pub fn get_object_ids(&self) -> Vec<usize>{
+        self.objects_.ids()
+    }
+    pub fn get_object(&self, id : usize) -> Arc<SingleElement<Box<dyn ObjectTrait>>>{
+        self.objects_[id].clone()
+    }
     pub fn update(&mut self, changed : bool) -> (GlobalScenegraphChanged, Vec<usize>) {
 
         // output
         let output = GlobalScenegraphChanged{
             world_ : self.world_.clone(),
-            scenes_ : self.scenes_.get_changed_and_reset(changed),
+            scenes_ : self.scenes_.get_changed(changed),
             objects_ : self.objects_.get_changed_and_reset(changed),
             //polygons_ : self.polygons_.get_changed_and_reset(changed),
             materials_ : self.materials_.get_changed_and_reset(changed),
@@ -80,7 +86,7 @@ impl GlobalScenegraph{
         let pending_interpreters = std::mem::take(&mut self.pending_interpreters_);
         for (mut inter, event) in pending_interpreters{
             self.consume_pending_elements(inter.get_data());
-            println!("{:?}", self);
+            //println!("{:?}", self);
             events.push(event);
         }
 
@@ -112,23 +118,23 @@ impl GlobalScenegraph{
         
         // update elements
         for (id, name, element) in &data.scenes_ {
-            self.new_scene(id, name.clone(), element, data).expect(&(CompactString::new("Scene : \"") + &name + &"\" could not be added."));
+            self.new_scene(*id, name, element.clone(), data).expect(&(CompactString::new("Scene : \"") + &name + &"\" could not be added."));
         }
         for (id, name, obj) in &data.objects_ {
-            self.new_object(id, name.clone(), obj, data).expect(&(CompactString::new("Object : \"") + &name + &"\" could not be added."));
+            self.new_object(*id, name, obj.clone(), data).expect(&(CompactString::new("Object : \"") + &name + &"\" could not be added."));
         }
         for (id, name, obj) in &data.materials_ {
-            self.new_material(id, name.clone(), obj, data).expect(&(CompactString::new("Material : \"") + &name + &"\" could not be added."));
+            self.new_material(*id, name, obj.clone(), data).expect(&(CompactString::new("Material : \"") + &name + &"\" could not be added."));
         }
         for (id, name, obj) in &data.viewports_ {
-            self.new_viewport(id, name.clone(), obj, data).expect(&(CompactString::new("Viewport : \"") + &name + &"\" could not be added."));
+            self.new_viewport(*id, name, obj.clone(), data).expect(&(CompactString::new("Viewport : \"") + &name + &"\" could not be added."));
         }
         
         std::mem::take(data);
     }
 
     // HANDLE INDIVIDUAL OBJECTS
-    fn new_object(&mut self, id : usize, name : CompactString, element: Arc<SingleElement<Box<dyn ObjectTrait>>>, data : &GlobalScenegraphPending) -> Result<u8, String> {
+    fn new_object(&mut self, id : usize, name : &str, element: Arc<SingleElement<Box<dyn ObjectTrait>>>, data : &GlobalScenegraphPending) -> Result<u8, String> {
         
         let object_unlocked = element.lock().unwrap();
         
@@ -138,7 +144,7 @@ impl GlobalScenegraph{
 
             // handle unlinked objects
             for old_obj_name in old_object_unlocked.0.get_linked_objects().difference(&object_unlocked.0.get_linked_objects()){
-                self.object2object.remove(old_obj_name, &name);
+                self.object2object.remove(old_obj_name, name);
                 if self.object2object.get(old_obj_name).is_none(){
                     self.remove_object(old_obj_name);
                 }
@@ -148,9 +154,9 @@ impl GlobalScenegraph{
 
         // finally add object
         drop(object_unlocked);
-        if let Some(names) = self.object2scene.get(&name){
+        if let Some(names) = self.object2scene.get(name){
             if self.scenes_.contains_names(names.iter()){
-                self.objects_.insert_str(id, element, name);
+                self.objects_.insert(id, element, name);
             }
             else {
                 return Err("Object belongs in non-existent scene.".to_string());
@@ -181,7 +187,7 @@ impl GlobalScenegraph{
             }
         }
     }
-    fn new_scene(&mut self, id : usize, name : CompactString, element: Arc<SingleElement<Scene>>, data : &GlobalScenegraphPending) -> Result<u8, String> {
+    fn new_scene(&mut self, id : usize, name : &str, element: Arc<SingleElement<Scene>>, data : &GlobalScenegraphPending) -> Result<u8, String> {
         
         let scene_unlocked = element.lock().unwrap();
         if let Some(old_id) = self.scenes_.get_id(&name){
@@ -191,7 +197,7 @@ impl GlobalScenegraph{
 
             // handle unlinked objects
             for old_obj_name in old_scene_unlocked.0.objects.difference(&scene_unlocked.0.objects){
-                self.object2scene.remove(old_obj_name, &name);
+                self.object2scene.remove(old_obj_name, name);
                 if self.object2scene.get(old_obj_name).is_none(){
                     self.remove_object(old_obj_name);
                 }
@@ -199,7 +205,7 @@ impl GlobalScenegraph{
 
             // handle unlinked materials
             for old_obj_name in old_scene_unlocked.0.materials.difference(&scene_unlocked.0.materials){
-                self.material2scene.remove(old_obj_name, &name);
+                self.material2scene.remove(old_obj_name, name);
                 if self.material2scene.get(old_obj_name).is_none(){
                     self.remove_material(old_obj_name);
                 }
@@ -211,7 +217,7 @@ impl GlobalScenegraph{
 
         // finally add scene
         drop(scene_unlocked);
-        self.scenes_.insert_str(id, element, name);
+        self.scenes_.insert(id, element, name);
 
         Ok(5)
     }
@@ -234,11 +240,11 @@ impl GlobalScenegraph{
             }
         }
     }
-    fn new_material(&mut self, id : usize, name : CompactString,  element: Arc<SingleElement<Material>>, _ : &GlobalScenegraphPending) -> Result<u8, String> {
+    fn new_material(&mut self, id : usize, name : &str,  element: Arc<SingleElement<Material>>, _ : &GlobalScenegraphPending) -> Result<u8, String> {
         //TODO : IF VALID LINKS EXIST
-        if let Some(names) = self.material2scene.get(&name){
+        if let Some(names) = self.material2scene.get(name){
             if self.scenes_.contains_names(names.iter()){
-                self.materials_.insert_str(id, element, name);
+                self.materials_.insert(id, element, name);
             }
             else {
                 return Err("Material belongs to non-existent scene.".to_string());
@@ -270,7 +276,7 @@ impl GlobalScenegraph{
             }
        }
     }
-    fn new_viewport(&mut self, id : usize, name : CompactString, element: Arc<SingleElement<ViewPort>>, data : &GlobalScenegraphPending) -> Result<u8, String> {
+    fn new_viewport(&mut self, id : usize, name : &str, element: Arc<SingleElement<ViewPort>>, data : &GlobalScenegraphPending) -> Result<u8, String> {
         
         let viewport_unlocked = element.lock().unwrap();
         
@@ -280,7 +286,7 @@ impl GlobalScenegraph{
 
             // handle unlinked objects
             for old_obj_name in HashSet::<CompactString>::from_iter(old_viewport_unlocked.0.cameras_.iter().cloned()).difference(&HashSet::from_iter(viewport_unlocked.0.cameras_.iter().cloned())){
-                self.object2viewport.remove(old_obj_name, &name);
+                self.object2viewport.remove(old_obj_name, name);
                 if self.object2viewport.get(old_obj_name).is_none(){
                     self.remove_object(old_obj_name);
                 }
@@ -291,7 +297,7 @@ impl GlobalScenegraph{
 
         // finally add viewport
         drop(viewport_unlocked);
-        self.viewports_.insert_str(id, element, name);
+        self.viewports_.insert(id, element, name);
 
         Ok(5)
     }

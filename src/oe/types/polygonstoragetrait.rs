@@ -22,11 +22,20 @@ pub struct UVMapData{
     pub elements : Vec<f32>
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct VertexGroup{
+    pub id : usize,
     pub name : CompactString,
     pub polygons : Vec<u32>,
     pub material : Option<CompactString>
+}
+
+impl VertexGroup{
+    pub fn new() -> VertexGroup{
+        static ID_COUNT : AtomicUsize = AtomicUsize::new(1);
+        let some_id = ID_COUNT.fetch_add(1, Ordering::Relaxed);
+        VertexGroup { id: some_id, name : Default::default(), polygons : Default::default(), material : Default::default()}
+    }
 }
 
 // polygon vertex key

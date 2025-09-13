@@ -24,17 +24,17 @@ impl WinsysBaseTrait for DummyWinsys{
 
 
 pub trait RendererBaseTrait : Send{
-    fn update_single_thread(&mut self, update_info : RendererUpdateInfo, winsys_output : WinsysOutput);
-    fn update_data(&mut self, data : GlobalScenegraphChanged);
+    fn update_single_thread(&mut self);
+    fn update_data(&mut self, data : GlobalScenegraphChanged, update_info : RendererUpdateInfo, winsys_output : WinsysOutput);
     fn get_name(&self) -> CompactString;
 }
 
 pub struct DummyRenderer;
 impl RendererBaseTrait for DummyRenderer{
-    fn update_single_thread(&mut self, _ : RendererUpdateInfo, _ : WinsysOutput){
+    fn update_single_thread(&mut self){
 
     }
-    fn update_data(&mut self, _ : GlobalScenegraphChanged){
+    fn update_data(&mut self, _ : GlobalScenegraphChanged, _ : RendererUpdateInfo, _ : WinsysOutput){
 
     }
     fn get_name(&self) -> CompactString{

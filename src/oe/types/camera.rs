@@ -1,14 +1,15 @@
 use super::object_trait::*;
 use super::light::*;
 use super::mesh::*;
+use super::super::math;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Camera {
     data_ : CommonObjectData,
-    aspect_ratio : f32,
-    fov : f32,
-    near : f32,
-    far : f32,
+    pub aspect_ratio : f32,
+    pub fov : f32,
+    pub near : f32,
+    pub far : f32,
 }
 
 impl Camera {
@@ -20,6 +21,9 @@ impl Camera {
             near,
             far
         }
+    }
+    pub fn get_perspective_mat(&self) -> math::Mat4x4{
+        math::perspective(self.fov, self.aspect_ratio, self.near, self.far)
     }
 }
 
@@ -33,5 +37,8 @@ impl ObjectTrait for Camera {
     }
     fn get_data_mut(&mut self) -> &mut CommonObjectData {
         &mut self.data_
+    }
+    fn update(&mut self){
+        
     }
 }

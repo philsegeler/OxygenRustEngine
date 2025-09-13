@@ -15,18 +15,25 @@ pub type SingleElement<T> = Mutex<(T, bool)>;
 
 
 // ELEMENT SNAPSHOT
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ElementSnapshot<T>{
     data : BaseContainer<T>,
     deleted : Vec<CompactString>
 }
 
-impl<T> Default for ElementSnapshot<T> {
-    fn default() -> Self {
-        ElementSnapshot{
-            data : Default::default(),
-            deleted : Default::default()
-        }
+impl<T> ElementSnapshot<T> {
+    pub fn get_data(&self) -> &BaseContainer<T>{
+        &self.data
+    }
+    pub fn get_deleted(&self) -> &Vec<CompactString>{
+        &self.deleted
+    }
+}
+
+impl<T> std::ops::Index<&str> for ElementSnapshot<T>{
+    type Output = T;
+    fn index(&self, index: &str) -> &Self::Output {
+        &self.data[index]
     }
 }
 
@@ -53,31 +60,31 @@ impl<T> ElementContainer<T>{
     pub fn len(&self) -> usize {
         self.data.len()
     }
-    pub fn contains(&self, event_id : &usize) -> bool{
-        self.data.contains(event_id)
+    pub fn contains(&self, id : &usize) -> bool{
+        self.data.contains(id)
     }
-    pub fn contains_name(&self, event_name : &str) -> bool{
-        self.data.contains_name(event_name)
+    pub fn contains_name(&self, name : &str) -> bool{
+        self.data.contains_name(name)
     }
     pub fn contains_names<'a>(&self, names : impl Iterator<Item=&'a CompactString>) -> bool{
         self.data.contains_names(names)
     }
 
-    pub fn get_name(&self, event_id : &usize) -> Option<&str> {
-        Some(self.data.get_name(event_id)?)
+    pub fn get_name(&self, id : &usize) -> Option<&str> {
+        Some(self.data.get_name(id)?)
     }
     pub fn names(&self) -> Vec<CompactString>{
         self.data.names().iter().map(|(_, x)| x.clone()).collect()
     }
 
-    pub fn get_id(&self, event_name : &str) -> Option<usize> {
-        Some(self.data.get_id(event_name)?)
+    pub fn get_id(&self, name : &str) -> Option<usize> {
+        Some(self.data.get_id(name)?)
     }
     pub fn insert(&mut self, id : usize, element : Arc<SingleElement<T>>, name : &str) -> Option<Arc<SingleElement<T>>>{
-        self.data.insert(id, element, name)
+        self.data.insert(id, element, name).0
     }
     pub fn insert_str(&mut self, id : usize, element : Arc<SingleElement<T>>, name : CompactString) -> Option<Arc<SingleElement<T>>>{
-        self.data.insert_str(id, element, name)
+        self.data.insert_str(id, element, name).0
     }
 
     pub fn remove(&mut self, id : usize){
@@ -101,9 +108,9 @@ impl<T> ElementContainer<T>{
     }
 }
 
-impl<T> std::iter::IntoIterator for &ElementContainer<T>{
-    type IntoIter = BaseContainerIntoIter<Arc<SingleElement<T>>>;
-    type Item = (usize, CompactString, Arc<SingleElement<T>>);
+impl<'a, T> std::iter::IntoIterator for &'a ElementContainer<T>{
+    type IntoIter = BaseContainerIntoIter<'a, &'a Arc<SingleElement<T>>>;
+    type Item = (&'a usize, &'a str, &'a Arc<SingleElement<T>>);
     fn into_iter(self) -> Self::IntoIter {
         self.data.into_iter()
     }
@@ -145,10 +152,11 @@ impl<T> GetDataElementContainer for ElementContainer<T> {
 
 pub trait ChangedElements : GetDataElementContainer {
     // functions to implement
-    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::InternalType;
+    type ProcessOutputType;
+    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::ProcessOutputType;
 
     // derived functions
-    fn get_changed_elements(&self, changed : bool) -> IntMap<usize, Self::InternalType> {
+    fn get_changed_elements(&self, changed : bool) -> IntMap<usize, Self::ProcessOutputType> {
         self.get_data().elements().iter().filter_map(|(id, element)| {
             let arced = element;
             let locked = arced.lock().unwrap();
@@ -161,7 +169,7 @@ pub trait ChangedElements : GetDataElementContainer {
         }).collect()
     }
 
-    fn get_changed_elements_and_reset(&self, changed : bool) -> IntMap<usize, Self::InternalType> {
+    fn get_changed_elements_and_reset(&self, changed : bool) -> IntMap<usize, Self::ProcessOutputType> {
         self.get_data().elements().iter().filter_map(|(id, element)| {
             let arced = element;
             let mut locked = arced.lock().unwrap();
@@ -175,34 +183,38 @@ pub trait ChangedElements : GetDataElementContainer {
         }).collect()
     }
 
-    fn get_changed(&mut self, changed : bool) -> ElementSnapshot<Self::InternalType> {
+    fn get_changed(&mut self, changed : bool) -> ElementSnapshot<Self::ProcessOutputType> {
 
         let deleted = self.get_deleted().clone();
         let data = BaseContainer::new( self.get_changed_elements(changed), self.get_data().names().clone());
         ElementSnapshot { data, deleted }
     }
-    fn get_changed_and_reset(&mut self, changed : bool) -> ElementSnapshot<Self::InternalType> {
+    fn get_changed_and_reset(&mut self, changed : bool) -> ElementSnapshot<Self::ProcessOutputType> {
         let deleted = self.get_deleted().clone();
-        for name in &deleted{
+        /*for name in &deleted{
             self.get_data_mut().remove_by_name(name);
-        }
+        }*/
         let data = BaseContainer::new( self.get_changed_elements_and_reset(changed), self.get_data().names().clone());
         ElementSnapshot { data, deleted }
     }
 }
 
 impl<T> ChangedElements for ElementContainer<T> where T : Clone{
-    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::InternalType{
+    type ProcessOutputType = Self::InternalType;
+    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::ProcessOutputType{
         locked.0.clone()
     }
 }
 
+
+
 impl ChangedElements for ElementContainer<Box<dyn ObjectTrait>> {
-    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::InternalType{
+    type ProcessOutputType = ChangedObjectEnum;
+    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::ProcessOutputType{
         let output = match locked.0.get_type(){
-                ObjectType::Camera => Some(Box::new(locked.0.get_camera().unwrap()) as Box<dyn ObjectTrait>),
-                ObjectType::Light => Some(Box::new(locked.0.get_light().unwrap()) as Box<dyn ObjectTrait>),
-                ObjectType::Mesh => Some(Box::new(locked.0.get_mesh().unwrap()) as Box<dyn ObjectTrait>),
+                ObjectType::Camera => Some(ChangedObjectEnum::Camera(locked.0.get_camera().unwrap())),
+                ObjectType::Light => Some(ChangedObjectEnum::Light(locked.0.get_light().unwrap())),
+                ObjectType::Mesh => Some(ChangedObjectEnum::Mesh(locked.0.get_mesh().unwrap())),
                 _ => None
         };
         output.unwrap()
@@ -210,7 +222,8 @@ impl ChangedElements for ElementContainer<Box<dyn ObjectTrait>> {
 }
 
 impl ChangedElements for ElementContainer<Box<dyn PolygonStorageTrait>> {
-    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::InternalType{
-        Box::new(RendererPolygonStorage{data : Some(locked.0.get_data().unwrap().clone()), ps_type : locked.0.get_type()}) as Box<dyn PolygonStorageTrait>
+    type ProcessOutputType = RendererPolygonStorage;
+    fn process(&self, locked : MutexGuard<'_, (Self::InternalType, bool)>) -> Self::ProcessOutputType{
+        RendererPolygonStorage{data : Some(locked.0.get_data().unwrap().clone()), ps_type : locked.0.get_type()}
     }
 }

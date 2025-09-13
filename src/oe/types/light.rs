@@ -28,22 +28,27 @@ impl From<i32> for LightType {
 pub struct Light {
     data_ : CommonObjectData,
     type_ : LightType,
-    intensity : f32,
-    fov : f32,
-    range : f32,
-    priority : u32
+    pub intensity : f32,
+    pub fov : f32,
+    pub range : f32,
+    pub color : [f32; 3],
+    pub priority : u32
 }
 
 impl Light {
-    pub fn new(type_ : LightType, intensity : f32, fov : f32, range : f32) -> Light{
+    pub fn new(type_ : LightType, intensity : f32, color : [f32 ; 3],fov : f32, range : f32) -> Light{
         Light{
             data_ : CommonObjectData::new(ObjectType::Light),
             type_,
             intensity,
             fov,
             range,
+            color,
             priority : 0
         }
+    }
+    pub fn get_type(&self) -> LightType{
+        self.type_
     }
 }
 
@@ -57,5 +62,8 @@ impl ObjectTrait for Light {
     }
     fn get_data_mut(&mut self) -> &mut CommonObjectData {
         &mut self.data_
+    }
+    fn update(&mut self){
+        
     }
 }

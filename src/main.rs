@@ -18,16 +18,16 @@ static ACTIVE_EVENTS : usize = 1000;
 static OVERHEAD_MIN : usize = 4;
 static OVERHEAD_MAX : usize = 10;
 
-fn task_test_fn(info: &oe::TaskInfo) -> oe::TaskOutput{
-    let task_name = oe::get_task_name(info.thread_id(), info.id());
-    println!("{:?}", task_name);
-    println!("{:?}", info);
+fn task_test_fn(_info: &oe::TaskInfo) -> oe::TaskOutput{
+    //let task_name = oe::get_task_name(info.thread_id(), info.id());
+    //println!("{:?}", task_name);
+    //println!("{:?}", info);
     oe::TaskOutput::Keep
 }
 
 fn run_event(info : &oe::EventInfo) -> Vec<usize>{
     println!("{}", oe::get_event_name(info.id()));
-    println!("{:?}", info);
+    //println!("{:?}", info);
     vec![]
 }
 
@@ -56,7 +56,7 @@ fn broadcast_all_events(_ : &oe::TaskInfo) -> oe::TaskOutput {
 
 
 fn create_events(_ : &oe::TaskInfo) -> oe::TaskOutput {
-    println!("Creating Events TASK 1");
+    //println!("Creating Events TASK 1");
     let broadcast_event = oe::create_user_event("launch broadcasting");
     oe::set_event_func_by_id(&broadcast_event, |_| {oe::add_task_func(&0,"event broadcast", &broadcast_all_events, oe::TaskEnum::Repeat, None);vec![]});
     for _ in 0..TOTAL_EVENTS {
@@ -69,7 +69,7 @@ fn create_events(_ : &oe::TaskInfo) -> oe::TaskOutput {
 
     }
     oe::broadcast_event_by_id(broadcast_event);
-    println!("Finished creating tasks");
+    //println!("Finished creating tasks");
     oe::TaskOutput::Drop
 }
 
@@ -82,20 +82,20 @@ fn main() {
     
     let event_id = oe::create_user_event("repeat after 5 secs");
     oe::set_event_func_by_id(&event_id, |info|{run_event(info)});
-    oe::repeat_timed_event_by_id(&event_id, 5.0);
+    //oe::repeat_timed_event_by_id(&event_id, 5.0);
     
     oe::add_task_func(&0,"add everything", &create_events, oe::TaskEnum::Once, None);
-    oe::repeat_timed_event_by_id(&event_id, 5.0);
+    //oe::repeat_timed_event_by_id(&event_id, 5.0);
     oe::add_task_func(&0, "test_task", &task_test_fn, oe::TaskEnum::Repeat, Some(2.0));
     oe::load_world_func("OE_VerySimple.csl", &run_event);
     oe::load_world_func("OE_Demo_50MB.csl", &run_event);
 
     oe::start();
-    let x = rand::random::<usize>() % (TOTAL_EVENTS-1 as usize);
+    //let x = rand::random::<usize>() % (TOTAL_EVENTS-1 as usize);
     //println!("{}", x);
-    let a = EVENTS_LIST.lock().unwrap()[x];
-    println!("{:?}", EVENTS_MAP.lock().unwrap()[&(a)]);
-    println!("{:?}", a);
+    //let a = EVENTS_LIST.lock().unwrap()[x];
+    //println!("{:?}", EVENTS_MAP.lock().unwrap()[&(a)]);
+    //println!("{:?}", a);
 
     use std::mem::size_of;
     println!("{:?} {:?} {:?}", size_of::<Box<[u32]>>(), size_of::<i64>(), size_of::<u64>());

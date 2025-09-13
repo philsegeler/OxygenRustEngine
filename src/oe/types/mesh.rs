@@ -26,7 +26,7 @@ impl Mesh {
         vec![]
     }
 
-    pub fn get_polygonstorage_unlocked(&mut self) -> MutexGuard<'_, (Box<dyn PolygonStorageTrait>, bool)> {
+    pub fn get_polygonstorage_unlocked(&self) -> MutexGuard<'_, (Box<dyn PolygonStorageTrait>, bool)> {
         self.polygon_storage_.1.lock().unwrap()
     }
 }
@@ -41,5 +41,9 @@ impl ObjectTrait for Mesh {
     }
     fn get_data_mut(&mut self) -> &mut CommonObjectData {
         &mut self.data_
+    }
+    fn update(&mut self){
+        let mut polygons = self.polygon_storage_.1.lock().unwrap();
+        polygons.1 = false;
     }
 }

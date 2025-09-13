@@ -16,8 +16,16 @@ type GlobalVar<T> = LazyLock<Arc<Mutex<T>>>;
 pub struct GlobalScenegraphChanged {
     pub world_     : Option<World>,
     pub scenes_    : ElementSnapshot<Scene>,
-    pub objects_   : ElementSnapshot<Box<dyn ObjectTrait>>,
-    //pub polygons_  : ElementSnapshot<Box<dyn PolygonStorageTrait>>,
+    pub objects_   : ElementSnapshot<ChangedObjectEnum>,
+    //pub polygons_  : ElementSnapshot<RendererPolygonStorage>,
     pub materials_ : ElementSnapshot<Material>,
     pub viewports_ : ElementSnapshot<ViewPort>,
+}
+
+impl GlobalScenegraphChanged{
+    pub fn is_empty(&self) -> bool{
+        self.objects_.get_data().is_empty() &&
+        self.materials_.get_data().is_empty() &&
+        self.viewports_.get_data().is_empty()
+    }
 }

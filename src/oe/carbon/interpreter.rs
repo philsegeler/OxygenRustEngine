@@ -11,17 +11,6 @@ use super::super::types::globalscenegraphpending::*;
 #[derive(Default, Debug)]
 pub struct Interpreter{
     data : GlobalScenegraphPending,
-    /*pub objects_ : InterpreterElementWrapper<Box<dyn object_trait::ObjectTrait>>,
-    //pub polygons_ : InterpreterElementWrapper<Box<dyn polygonstoragetrait::PolygonStorageTrait>>,
-    pub scenes_  : InterpreterElementWrapper<scene::Scene>,
-    pub materials_  : InterpreterElementWrapper<material::Material>,
-    pub viewports_  : InterpreterElementWrapper<viewport::ViewPort>,
-    pub world : Option<world::World>,
-
-    object2viewport      : HashMultiMap<CompactString, CompactString>,
-    object2scene         : HashMultiMap<CompactString, CompactString>,
-    material2scene       : HashMultiMap<CompactString, CompactString>,
-    vertexgroup2material : HashMultiMap<VertexGroupMeshKey, CompactString>,*/
 }
 
 impl Interpreter{
@@ -147,9 +136,9 @@ impl Interpreter{
         let fov = element.assignments_ref()["fov"].get_float().unwrap() as f32;
         let range = element.assignments_ref()["range"].get_float().unwrap() as f32;
         let intensity = element.assignments_ref()["intensity"].get_float().unwrap() as f32;
-        
+        let color : Vec<f32> = element.assignments_ref()["color"].get_float_list().unwrap().iter().map(|x| *x as f32).collect();
 
-        let output: Arc<Mutex<(Box<dyn object_trait::ObjectTrait>, bool)>> = Arc::new(Mutex::new((Box::new(light::Light::new(ltype, intensity, fov, range)), true)));
+        let output: Arc<Mutex<(Box<dyn object_trait::ObjectTrait>, bool)>> = Arc::new(Mutex::new((Box::new(light::Light::new(ltype, intensity, color.try_into().unwrap(), fov, range)), true)));
         let mut output_unlocked = output.lock().unwrap();
 
         let cs_v = element.assignments_ref()["current_state"].get_float_list().unwrap();
@@ -215,7 +204,7 @@ impl Interpreter{
     }
 
     fn process_vgroup(&mut self, element : &Element, obj_name : &str) -> VertexGroup{
-        let mut output : VertexGroup = Default::default();
+        let mut output : VertexGroup = VertexGroup::new();
 
         output.name =  CompactString::new(element.attributes_ref()["name"].get_str().unwrap());
         output.polygons = element.assignments_ref()["polygons"].get_int_list().unwrap().iter().map(|x| *x as u32).collect();

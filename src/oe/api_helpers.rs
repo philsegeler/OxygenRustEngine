@@ -60,6 +60,7 @@ pub fn init(x: u32, y: u32, title: &str) -> bool {
             while !(OE_DONE_.load(Ordering::Relaxed)) {
                 start_cond.update();
                 update_tasks();
+                update_objects();
                 end_cond.update();
                 update_scenegraph();
                 update_events();
@@ -77,13 +78,32 @@ pub fn init(x: u32, y: u32, title: &str) -> bool {
     true
 }
 
+fn update_objects(){
+    let scenegraph = OE_SCENEGRAPH_.lock().unwrap();
+    for id in scenegraph.get_object_ids(){
+        let object_mutexed = scenegraph.get_object(id);
+        let mut object = object_mutexed.lock().unwrap();
+        object.0.update();
+    }
+}
+
 fn update_scenegraph(){
+    let mut update_info_mutex = OE_RENDERER_UPDATE_INFO_.lock().unwrap();
+    let update_info = (*update_info_mutex).unwrap();
+    update_info_mutex.as_mut().unwrap().restart_renderer = false;
+    drop(update_info_mutex);
+
     let mut scenegraph = OE_SCENEGRAPH_.lock().unwrap();
-    let (changed_elems , events)= scenegraph.update(false);
+    let (changed_elems , events)= scenegraph.update(update_info.restart_renderer);
     drop(scenegraph);
 
+    let winsys_output_mutex = OE_WINSYS_OUTPUT_INFO_.lock().unwrap();
+    let winsys_output = 
+    winsys_output_mutex.clone().unwrap();
+    drop(winsys_output_mutex);
+
     let mut renderer = OE_RENDERER_.lock().unwrap();
-    renderer.as_mut().unwrap().update_data(changed_elems);
+    renderer.as_mut().unwrap().update_data(changed_elems, update_info, winsys_output);
     drop(renderer);
 
     for event in &events{
@@ -161,30 +181,25 @@ fn update_tasks(){
 pub fn step() -> bool {
     if !OE_USE_MULTIPLE_THREADS_ {
         update_tasks();
+        update_objects();
     }
     else {
         OE_START_CONDITION_.update();
     }
     // renderer update
-    
-    let output;
+    {
+        let mut renderer = OE_RENDERER_.lock().unwrap();
+        renderer.as_mut().unwrap().update_single_thread();
+    }
+
+    // winsys update
     {
         let mut update_info = OE_WINSYS_UPDATE_INFO_.lock().unwrap();
-        output = OE_WINSYS_.with_borrow_mut(|winsys|winsys.update_window(update_info.clone().unwrap()));
+        let output = OE_WINSYS_.with_borrow_mut(|winsys|winsys.update_window(update_info.clone().unwrap()));
         *update_info = Some(output.update_info.clone());
         *OE_WINSYS_OUTPUT_INFO_.lock().unwrap() = Some(output.clone());
     }
 
-    {
-        let mut update_info_mutex = OE_RENDERER_UPDATE_INFO_.lock().unwrap();
-        let update_info = (*update_info_mutex).unwrap();
-        update_info_mutex.as_mut().unwrap().restart_renderer = false;
-        drop(update_info_mutex);
-        let mut renderer = OE_RENDERER_.lock().unwrap();
-        renderer.as_mut().unwrap().update_single_thread(update_info, output);
-    }
-
-    //pending renderer data
     let mut unsync_threads = OE_UNSYNC_THREADS_.lock().unwrap();
     for mut thread in std::mem::take(&mut *unsync_threads){
         thread.1 = thread.0.is_finished();
@@ -197,6 +212,7 @@ pub fn step() -> bool {
     }
     drop(unsync_threads);
 
+    //update winsys events
     OE_WINSYS_.with_borrow_mut(|winsys|winsys.update_events_single_thread());
 
     if OE_USE_MULTIPLE_THREADS_{

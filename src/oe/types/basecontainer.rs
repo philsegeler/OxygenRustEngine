@@ -1,13 +1,13 @@
 use nohash_hasher::*;
-use bimap::BiMap;
+use bimap::{BiMap, Overwritten};
 use std::ops::Index;
 use std::collections::hash_map::Keys;
 use compact_str::CompactString;
-use debug_ignore::DebugIgnore;
+//use debug_ignore::DebugIgnore;
 
 #[derive(Debug, Clone)]
 pub struct BaseContainer<T> {
-    elements_list_ : DebugIgnore<IntMap<usize, T>>,
+    elements_list_ : IntMap<usize, T>,
     element_names_ : BiMap<usize, CompactString>,
 }
 
@@ -37,18 +37,23 @@ impl<T> BaseContainer<T> {
     pub fn keys(&self) -> Keys<'_, usize, T> {
         self.elements_list_.keys()
     }
+    pub fn is_empty(&self) -> bool {
+        self.elements_list_.is_empty()
+    }
     pub fn get_mut(&mut self, id : &usize) -> Option<&mut T> {
         self.elements_list_.get_mut(id)
     }
-    pub fn insert(&mut self, id : usize, element : T, name : &str) -> Option<T>{
-        let output = self.elements_list_.insert(id, element);
-        let _ = self.element_names_.insert(id, name.into());
-        output
+    pub fn insert(&mut self, id : usize, element : T, name : &str) -> (Option<T>, Option<usize>){
+        self.insert_str(id, element, name.into())
     }
-    pub fn insert_str(&mut self, id : usize, element : T, name : CompactString) -> Option<T>{
+    pub fn insert_str(&mut self, id : usize, element : T, name : CompactString) -> (Option<T>, Option<usize>){
         let output = self.elements_list_.insert(id, element);
-        let _ = self.element_names_.insert(id, name);
-        output
+        let overwritten = self.element_names_.insert(id, name);
+        let overwritten_id = match overwritten{
+            Overwritten::Left(id,_ ) => Some(id),
+            _ => None
+        };
+        (output, overwritten_id)
     }
     pub fn insert_no_overwrite(&mut self, id : usize, element : T, name : &str) -> bool{
         if !self.contains_name(name){
@@ -102,7 +107,7 @@ impl<T> BaseContainer<T> {
         self.element_names_.remove_by_left(&id);
         self.elements_list_.remove_entry(&id).unwrap().1
     }
-    pub fn extend(&mut self, mut other : BaseContainer<T>) -> Vec<Option<T>>{
+    pub fn extend(&mut self, mut other : BaseContainer<T>) -> Vec<(Option<T>, Option<usize>)>{
         let mut output = Vec::with_capacity(other.len());
         for (id, name) in other.element_names_.clone(){
             output.push(self.insert(id, other.pop(id), &name));
@@ -131,31 +136,33 @@ impl<T> Index<&str> for BaseContainer<T> {
     }
 }
 
-// Proper iterator
-pub struct BaseContainerIntoIter<T>{
-    data : Vec<(usize, CompactString, T)>,
+// Proper iterator for BaseContainer
+pub struct BaseContainerIntoIter<'a, T>{
+    data : Vec<(&'a usize, &'a str, T)>,
     index : usize,
 }
 
-impl<T> Iterator for BaseContainerIntoIter<T> where T : Clone{
-    type Item = (usize, CompactString, T);
+impl<'a, T> Iterator for BaseContainerIntoIter<'a, &'a T>{
+    type Item = (&'a usize, &'a str, &'a T);
     fn next(&mut self) -> Option<Self::Item> {
         let mut output = None;
         if self.index < self.data.len(){
-            output = Some(self.data[self.index].clone());
+            output = Some(self.data[self.index]);
         }
         self.index+=1;
         output
     }
 }
 
-impl<T> std::iter::IntoIterator for &BaseContainer<T> where T : Clone{
-    type IntoIter = BaseContainerIntoIter<T>;
-    type Item = (usize, CompactString, T);
+// Iterator for all Elements
+impl<'a, T> std::iter::IntoIterator for &'a BaseContainer<T>{
+    type IntoIter = BaseContainerIntoIter<'a, &'a T>;
+    type Item = (&'a usize, &'a str, &'a T);
     fn into_iter(self) -> Self::IntoIter {
-        let mut output = vec![];
-        for x in &*(self.elements_list_){
-            output.push((*x.0, CompactString::new(self.get_name(&x.0).unwrap()),x.1.clone()))
+        let mut output = Vec::with_capacity(self.len());
+        //for x in &*(self.elements_list_){
+        for x in &self.elements_list_{
+            output.push((x.0, self.get_name(&x.0).unwrap(),x.1))
         }
         BaseContainerIntoIter{
             data : output,
