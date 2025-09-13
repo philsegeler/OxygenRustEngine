@@ -6,10 +6,11 @@ use super::mesh::*;
 #[derive(Clone, Copy, Debug, Default)]
 pub enum LightType {
     #[default]
-    Point = 0,
-    Sun = 1,
-    Lamp = 2,
-    CustomLight = 3
+    CustomLight = 0,
+    Point = 1,
+    Sun = 2,
+    Lamp = 3,
+
 }
 
 impl From<i32> for LightType {

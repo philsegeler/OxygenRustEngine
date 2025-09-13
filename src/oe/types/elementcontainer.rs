@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::iter::Iterator;
+use std::collections::HashSet;
 use std::ops::Index;
 //use std::iter::Iterator;
 
@@ -18,14 +19,14 @@ pub type SingleElement<T> = Mutex<(T, bool)>;
 #[derive(Debug, Default)]
 pub struct ElementSnapshot<T>{
     data : BaseContainer<T>,
-    deleted : Vec<CompactString>
+    deleted : HashSet<CompactString>
 }
 
 impl<T> ElementSnapshot<T> {
     pub fn get_data(&self) -> &BaseContainer<T>{
         &self.data
     }
-    pub fn get_deleted(&self) -> &Vec<CompactString>{
+    pub fn get_deleted(&self) -> &HashSet<CompactString>{
         &self.deleted
     }
 }
@@ -41,7 +42,7 @@ impl<T> std::ops::Index<&str> for ElementSnapshot<T>{
 #[derive(Clone, Debug)]
 pub struct ElementContainer<T>{
     data : BaseContainer<Arc<SingleElement<T>>>,
-    deleted : Vec<CompactString>,
+    deleted : HashSet<CompactString>,
 }
 
 impl<T> Default for ElementContainer<T> {
@@ -81,23 +82,28 @@ impl<T> ElementContainer<T>{
         Some(self.data.get_id(name)?)
     }
     pub fn insert(&mut self, id : usize, element : Arc<SingleElement<T>>, name : &str) -> Option<Arc<SingleElement<T>>>{
+        if self.deleted.contains(name){
+            self.deleted.remove(name);
+        }
         self.data.insert(id, element, name).0
+        
     }
     pub fn insert_str(&mut self, id : usize, element : Arc<SingleElement<T>>, name : CompactString) -> Option<Arc<SingleElement<T>>>{
         self.data.insert_str(id, element, name).0
     }
 
     pub fn remove(&mut self, id : usize){
-        self.deleted.push(self.get_name(&id).unwrap().into());
+        self.deleted.insert(self.get_name(&id).unwrap().into());
     }
 
     pub fn remove_now(&mut self, id : &usize) -> Option<(Arc<SingleElement<T>>, CompactString)>{
+        self.deleted.insert(self.get_name(&id).unwrap().into());
         self.data.remove(id)
     }
 
     pub fn update(&mut self){
 
-        for name in self.deleted.drain(..){
+        for name in self.deleted.drain(){
             self.data.remove_by_name(&name);
         }
 
@@ -134,7 +140,7 @@ pub trait GetDataElementContainer{
     type InternalType;
     fn get_data(&self) -> &BaseContainer<Arc<SingleElement<Self::InternalType>>>;
     fn get_data_mut(&mut self) -> &mut BaseContainer<Arc<SingleElement<Self::InternalType>>>;
-    fn get_deleted(&mut self) -> &mut Vec<CompactString>;
+    fn get_deleted(&mut self) -> &mut HashSet<CompactString>;
 
 }
 impl<T> GetDataElementContainer for ElementContainer<T> {
@@ -145,7 +151,7 @@ impl<T> GetDataElementContainer for ElementContainer<T> {
     fn get_data_mut(&mut self) -> &mut BaseContainer<Arc<SingleElement<Self::InternalType>>>{
         &mut self.data
     }
-    fn get_deleted(&mut self) -> &mut Vec<CompactString>{
+    fn get_deleted(&mut self) -> &mut HashSet<CompactString>{
         &mut self.deleted
     }
 }

@@ -3,11 +3,11 @@ use bimap::{BiMap, Overwritten};
 use std::ops::Index;
 use std::collections::hash_map::Keys;
 use compact_str::CompactString;
-//use debug_ignore::DebugIgnore;
+use debug_ignore::DebugIgnore;
 
 #[derive(Debug, Clone)]
 pub struct BaseContainer<T> {
-    elements_list_ : IntMap<usize, T>,
+    elements_list_ : DebugIgnore<IntMap<usize, T>>,
     element_names_ : BiMap<usize, CompactString>,
 }
 
@@ -161,7 +161,7 @@ impl<'a, T> std::iter::IntoIterator for &'a BaseContainer<T>{
     fn into_iter(self) -> Self::IntoIter {
         let mut output = Vec::with_capacity(self.len());
         //for x in &*(self.elements_list_){
-        for x in &self.elements_list_{
+        for x in &*self.elements_list_{
             output.push((x.0, self.get_name(&x.0).unwrap(),x.1))
         }
         BaseContainerIntoIter{

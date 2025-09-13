@@ -64,6 +64,7 @@ impl DataHandler{
         let mut camera_ids: Vec<usize> = vec![];
 
         if !elements.is_empty(){
+            println!("{:?}", elements);
             println!("RUNS DATA HANDLER");
         }
 
@@ -135,6 +136,9 @@ impl DataHandler{
                 }
             }
             self.viewports.remove_by_name(name);
+        }
+        if !elements.is_empty(){
+            println!("{:?}", self);
         }
     }
 
@@ -223,6 +227,7 @@ impl DataHandler{
     fn handle_light_data(&mut self, id : &usize, light : &Light, name : &str, _elements : &GlobalScenegraphChanged){
         match light.get_type(){
             LightType::Point => {
+                
                 let mut light_render_data;
                 if self.pt_lights.contains(id) {
                     light_render_data = self.pt_lights[*id].clone();
@@ -230,6 +235,7 @@ impl DataHandler{
                     light_render_data.color = math::Vec3::new(&light.color);
                     light_render_data.intensity = light.intensity;
                     light_render_data.range = light.range;
+                    light_render_data.common_data.changed = true;
                 }
                 else{
                     light_render_data = PointLightRenderData { 

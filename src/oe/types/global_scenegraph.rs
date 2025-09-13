@@ -60,6 +60,11 @@ impl GlobalScenegraph{
             viewports_ : self.viewports_.get_changed_and_reset(changed),
         };
 
+        self.scenes_.update();
+        self.materials_.update();
+        self.objects_.update();
+        self.viewports_.update();
+
         // delete everything that is necessary
         for name in std::mem::take(self.scenes_.get_deleted()){
             self.remove_scene(&name);
