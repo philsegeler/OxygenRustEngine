@@ -30,7 +30,9 @@ pub struct DataHandler{
     pub has_dir_lights_changed : bool,
     pub has_pt_lights_changed : bool,
     pub load_spheres_or_bboxes : bool,
-    pub loaded_viewport : usize
+    pub loaded_viewport : usize,
+
+    pub elements : GlobalScenegraphChanged,
 }
 
 impl DataHandler{
@@ -47,11 +49,16 @@ impl DataHandler{
             has_dir_lights_changed: false, 
             has_pt_lights_changed: false, 
             load_spheres_or_bboxes: false, 
-            loaded_viewport: 0 }
+            loaded_viewport: 0,
+            elements : Default::default() }
     }
 
-    pub fn update(&mut self, restart_renderer : bool, load_minmax_elements : bool, elements : &GlobalScenegraphChanged) {
-        
+    pub fn set_changed(&mut self, new_data : GlobalScenegraphChanged){
+        self.elements = new_data;
+    }
+
+    pub fn update(&mut self, restart_renderer : bool, load_minmax_elements : bool) {
+
         self.scenes.update(restart_renderer);
         self.cameras.update(restart_renderer);
         self.dir_lights.update(restart_renderer);
@@ -62,56 +69,58 @@ impl DataHandler{
 
         self.load_spheres_or_bboxes = load_minmax_elements;
         let mut camera_ids: Vec<usize> = vec![];
-
-        if !elements.is_empty(){
-            println!("{:?}", elements);
+        let is_elements_empty = !self.elements.is_empty();
+        if is_elements_empty{
+            println!("{:?}", self.elements);
             println!("RUNS DATA HANDLER");
         }
 
         // first handle materials
-        for (id, name, material) in elements.materials_.get_data(){
-            self.handle_material_data(id, material, name, &elements);
+        for (id, name, material) in &self.elements.materials_.take_data(){
+            self.handle_material_data(id, material, name);
         }
         self.has_dir_lights_changed = false;
         self.has_pt_lights_changed = false;
 
         // then meshes and lights
-        for (id, name, obj) in elements.objects_.get_data(){
+        let new_objects = self.elements.objects_.take_data();
+        for (id, name, obj) in &new_objects{
             match obj{
-                ChangedObjectEnum::Light(light) =>{self.handle_light_data(id, light, name, &elements);}
-                ChangedObjectEnum::Mesh(mesh) =>{self.handle_mesh_data(id, mesh, name, &elements);}
+                ChangedObjectEnum::Light(light) =>{self.handle_light_data(id, light, name);}
+                ChangedObjectEnum::Mesh(mesh) =>{self.handle_mesh_data(id, mesh, name);}
                 _ => {}
             }
         }
         // then cameras
-        for (id, name, obj) in elements.objects_.get_data(){
+        for (id, name, obj) in &new_objects{
             match obj{
                 ChangedObjectEnum::Camera(camera) =>{
-                    self.handle_camera_data(id, camera, name, &elements);
+                    self.handle_camera_data(id, camera, name);
                     camera_ids.push(*id);
                 }
                 _ => {}
             }
         }
+        drop(new_objects);
 
         // then scenes
-        for (id, name, scene) in elements.scenes_.get_data(){
-            self.handle_scene_data(id, scene, name, &elements);
+        for (id, name, scene) in &self.elements.scenes_.take_data(){
+            self.handle_scene_data(id, scene, name);
         }
         // then viewport
-        for (id, name, viewport) in elements.viewports_.get_data(){
-            let loaded_viewport = &elements.world_.as_ref().unwrap().loaded_viewport;
+        for (id, name, viewport) in &self.elements.viewports_.take_data(){
+            let loaded_viewport = &self.elements.world_.as_ref().unwrap().loaded_viewport;
             self.loaded_viewport = self.viewports.get_id(loaded_viewport).unwrap();
-            self.handle_viewport_data(id, viewport, name, &elements);
+            self.handle_viewport_data(id, viewport, name);
         }
 
-        for name in elements.materials_.get_deleted(){
+        for name in &self.elements.materials_.take_deleted(){
             self.materials.remove_by_name(name);
         }
-        for name in elements.scenes_.get_deleted(){
+        for name in &self.elements.scenes_.take_deleted(){
             self.scenes.remove_by_name(name);
         }
-        for name in elements.objects_.get_deleted(){
+        for name in &self.elements.objects_.take_deleted(){
             if self.meshes.contains_name(name){
                 self.meshes.remove_by_name(name);
             }
@@ -128,7 +137,7 @@ impl DataHandler{
             }
         }
 
-        for name in elements.viewports_.get_deleted(){
+        for name in self.elements.viewports_.get_deleted(){
             let id_opt = self.viewports.get_id(name);
             if let Some(id) = id_opt{
                 if self.loaded_viewport == id{
@@ -137,14 +146,14 @@ impl DataHandler{
             }
             self.viewports.remove_by_name(name);
         }
-        if !elements.is_empty(){
+        if is_elements_empty{
             println!("{:?}", self);
         }
     }
 
     ////////// HANDLE ELEMENTS ////////////////
     
-    fn handle_mesh_data(&mut self, id : &usize, mesh : &Mesh, name : &str, _elements : &GlobalScenegraphChanged){
+    fn handle_mesh_data(&mut self, id : &usize, mesh : &Mesh, name : &str){
         
         let mut mesh_render_data: MeshRenderData;
         if self.meshes.contains(id){
@@ -181,7 +190,7 @@ impl DataHandler{
         self.meshes.insert(*id, mesh_render_data, name);
     }
 
-    fn handle_material_data(&mut self, id : &usize, material : &Material, name : &str, _elements : &GlobalScenegraphChanged){
+    fn handle_material_data(&mut self, id : &usize, material : &Material, name : &str){
         
         let mut material_render_data: MaterialRenderData;
         if self.materials.contains(id){
@@ -198,13 +207,14 @@ impl DataHandler{
         self.materials.insert(*id, material_render_data, name);
     }
 
-    fn handle_camera_data(&mut self, id : &usize, camera : &Camera, name : &str, _elements : &GlobalScenegraphChanged){
+    fn handle_camera_data(&mut self, id : &usize, camera : &Camera, name : &str){
         
         let mut camera_render_data: CameraRenderData;
         let view_mat_64 = camera.get_view_mat().get_f32_vec();
         let view_mat = math::Mat4x4::new(&view_mat_64.try_into().unwrap());
         let perspective_mat = camera.get_perspective_mat();
         let perspective_view_mat = perspective_mat.clone()*view_mat.clone();
+        let model_mat = camera.get_model_mat();
 
         if self.cameras.contains(id){
             camera_render_data = self.cameras[*id].clone();
@@ -216,6 +226,7 @@ impl DataHandler{
         camera_render_data.perspective_mat = perspective_mat;
         camera_render_data.view_mat = view_mat;
         camera_render_data.perspective_view_mat = perspective_view_mat;
+        camera_render_data.model_mat = model_mat;
         camera_render_data.near = camera.near;
         camera_render_data.far = camera.far;
 
@@ -224,7 +235,7 @@ impl DataHandler{
         self.cameras.insert(*id, camera_render_data, name);
     }
 
-    fn handle_light_data(&mut self, id : &usize, light : &Light, name : &str, _elements : &GlobalScenegraphChanged){
+    fn handle_light_data(&mut self, id : &usize, light : &Light, name : &str){
         match light.get_type(){
             LightType::Point => {
                 
@@ -248,6 +259,8 @@ impl DataHandler{
                     }
                 }
                 self.has_pt_lights_changed = true;
+                light_render_data.common_data.data = light_render_data.model_mat.get_f32_vec();
+                light_render_data.common_data.data[15] = light.range; 
                 self.pt_lights.insert(*id, light_render_data, name);
             }
             _ => {}
@@ -267,7 +280,7 @@ impl DataHandler{
         output
     }
 
-    fn handle_scene_data(&mut self, id : &usize, scene : &Scene, name : &str, _elements : &GlobalScenegraphChanged){
+    fn handle_scene_data(&mut self, id : &usize, scene : &Scene, name : &str){
         let mut scene_render_data = SceneRenderData::new(*id);
 
         for elem in &scene.materials{
@@ -293,7 +306,7 @@ impl DataHandler{
         self.scenes.insert(*id, scene_render_data, name);
     }
 
-    fn handle_viewport_data(&mut self, id : &usize, viewport : &ViewPort, name : &str, _elements : &GlobalScenegraphChanged){
+    fn handle_viewport_data(&mut self, id : &usize, viewport : &ViewPort, name : &str){
         let viewport_render_data : ViewportRenderData = ViewportRenderData { 
             common_data: CommonRenderData::new(*id), 
             layers_: viewport.layers_.clone(), 

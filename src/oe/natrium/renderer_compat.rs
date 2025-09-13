@@ -28,11 +28,11 @@ impl RendererCompat{
 
 impl RendererBaseTrait for RendererCompat{
     fn update_single_thread(&mut self){
-        self.data.update(false, false, self.new_data.as_ref().unwrap_or(&Default::default()));
-        std::mem::take(&mut self.new_data);
+        self.data.update(false, false);
+
     }
     fn update_data(&mut self, new_data : GlobalScenegraphChanged, update_info : RendererUpdateInfo, winsys_output : WinsysOutput){
-        self.new_data = Some(new_data);
+        self.data.set_changed(new_data);
         self.renderer_update_info = update_info;
         self.winsys_data = winsys_output;
         //println!("{:?}", &self.new_data);

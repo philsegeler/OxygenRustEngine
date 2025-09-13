@@ -29,6 +29,12 @@ impl<T> ElementSnapshot<T> {
     pub fn get_deleted(&self) -> &HashSet<CompactString>{
         &self.deleted
     }
+    pub fn take_data(&mut self) -> BaseContainer<T>{
+        std::mem::take(&mut self.data)
+    }
+    pub fn take_deleted(&mut self) -> HashSet<CompactString>{
+        std::mem::take(&mut self.deleted)
+    }
 }
 
 impl<T> std::ops::Index<&str> for ElementSnapshot<T>{

@@ -105,11 +105,9 @@ impl GlobalScenegraph{
             for name in self.viewports_.names(){
                 self.remove_viewport(&name);
             }
-            
             for name in self.scenes_.names(){
                 self.remove_scene(&name);
             }
-            
             self.world_ = data.world_.clone();
         }
         
