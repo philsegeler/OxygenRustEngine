@@ -7,9 +7,9 @@ use super::super::super::math::*;
 
 #[derive(Clone, Debug)]
 pub struct CommonRenderData{
-    pub id : usize,
-    pub changed : bool,
-    pub has_init : bool,
+    id : usize,
+    changed : bool,
+    has_init : bool,
     pub data : Vec<f32>
 }
 
@@ -24,6 +24,15 @@ impl CommonRenderData{
         let mut output: CommonRenderData = Default::default();
         output.id = id;
         output
+    }
+    pub fn has_init_and_reset(&mut self) -> bool{
+        std::mem::replace(&mut self.has_init, true)
+    }
+    pub fn set_changed(&mut self, arg : bool){
+        self.changed = arg;
+    }
+    pub fn is_changed_and_reset(&mut self) -> bool{
+        std::mem::replace(&mut self.changed, false)
     }
 }
 
@@ -69,7 +78,11 @@ impl CameraRenderData{
     }
 
     pub fn update_renderer_data(&mut self){
-        
+        self.common_data.data = self.model_mat.get_f32_vec();
+        self.common_data.data.push(self.model_mat[(3, 0)] as f32);
+        self.common_data.data.push(self.model_mat[(3, 1)] as f32);
+        self.common_data.data.push(self.model_mat[(3, 2)] as f32);
+        self.common_data.data.push(1.0);
     }
 }
 

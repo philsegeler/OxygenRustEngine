@@ -186,7 +186,7 @@ impl DataHandler{
             };
             drop(polygons_unlocked);
         }
-        mesh_render_data.common_data.changed = true;
+        mesh_render_data.common_data.set_changed(true);
         self.meshes.insert(*id, mesh_render_data, name);
     }
 
@@ -203,7 +203,7 @@ impl DataHandler{
             }
         }
         material_render_data.common_data.data = material.get_renderer_data();
-        material_render_data.common_data.changed = true;
+        material_render_data.common_data.set_changed(true);
         self.materials.insert(*id, material_render_data, name);
     }
 
@@ -231,7 +231,7 @@ impl DataHandler{
         camera_render_data.far = camera.far;
 
         camera_render_data.update_renderer_data();
-        camera_render_data.common_data.changed = true;
+        camera_render_data.common_data.set_changed(true);
         self.cameras.insert(*id, camera_render_data, name);
     }
 
@@ -246,7 +246,7 @@ impl DataHandler{
                     light_render_data.color = math::Vec3::new(&light.color);
                     light_render_data.intensity = light.intensity;
                     light_render_data.range = light.range;
-                    light_render_data.common_data.changed = true;
+                    light_render_data.common_data.set_changed(true);
                 }
                 else{
                     light_render_data = PointLightRenderData { 

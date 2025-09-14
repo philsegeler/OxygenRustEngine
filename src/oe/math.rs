@@ -201,6 +201,18 @@ impl std::ops::Mul<DVec4> for DMat4x4 {
     }
 }
 
+impl std::ops::Index<(usize, usize)> for DMat4x4{
+    type Output = f64;
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        & self.data[index]
+    }
+}
+impl std::ops::IndexMut<(usize, usize)> for DMat4x4{
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+        &mut self.data[index]
+    }
+}
+
 #[repr(transparent)]
 #[derive(Clone, Debug, Default)]
 pub struct Mat4x4 {

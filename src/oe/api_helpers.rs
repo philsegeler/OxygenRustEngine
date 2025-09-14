@@ -78,6 +78,11 @@ pub fn init(x: u32, y: u32, title: &str) -> bool {
     true
 }
 
+pub fn set_title(name : &str){
+    let mut winsys_update_info = OE_WINSYS_UPDATE_INFO_.lock().unwrap();
+    winsys_update_info.as_mut().unwrap().title = name.into();
+}
+
 fn update_objects(){
     let scenegraph = OE_SCENEGRAPH_.lock().unwrap();
     for id in scenegraph.get_object_ids(){

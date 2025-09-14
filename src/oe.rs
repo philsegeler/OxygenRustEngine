@@ -39,6 +39,10 @@ pub extern "C" fn start() -> bool{
     api_helpers::start()
 }
 
+pub fn set_title(name : &str){
+    api_helpers::set_title(name);
+}
+
 /// task handling
 #[no_mangle]
 pub extern "C" fn create_task_thread() -> usize {

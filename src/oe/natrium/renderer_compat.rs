@@ -28,7 +28,7 @@ impl RendererCompat{
 
 impl RendererBaseTrait for RendererCompat{
     fn update_single_thread(&mut self){
-        self.data.update(false, false);
+        self.data.update(self.renderer_update_info.restart_renderer, self.renderer_update_info.render_bounding_boxes || self.renderer_update_info.render_bounding_spheres);
 
     }
     fn update_data(&mut self, new_data : GlobalScenegraphChanged, update_info : RendererUpdateInfo, winsys_output : WinsysOutput){

@@ -78,7 +78,7 @@ fn main() {
 
     oe::init(640, 480, "Some Rust Demo 2");
     
-    oe::set_event_func("keyboard-Space+", |_| {oe::mouse::toggle_lock();vec![]});
+    oe::set_event_func("keyboard-Space+", |info| {oe::set_title(&("Space key pressed: ".to_owned() + &info.invocations().to_string()));oe::mouse::toggle_lock();vec![]});
     
     let event_id = oe::create_user_event("repeat after 5 secs");
     oe::set_event_func_by_id(&event_id, |info|{run_event(info)});

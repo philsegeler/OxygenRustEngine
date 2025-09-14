@@ -200,6 +200,7 @@ impl WinsysBaseTrait for WinsysSdl2<'_>{
         }
         if data.update_info.title != update_info.title{
             self.window_.set_title(&update_info.title).unwrap();
+            data.update_info.title = update_info.title;
         }
         if ! data.update_info.res_changed{
             data.update_info.res_x = update_info.res_x;
